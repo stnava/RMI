@@ -199,7 +199,7 @@ We entered a competition with R in our holster.
 Search "r-project.org $+$ medical $+$ imaging"
 % http://scholar.google.com/scholar?q=r-project.org+%22medical+imaging%22&hl=en&as_sdt=1%2C39&as_ylo=2010&as_yhi=2010
 <<out.width='.4\\linewidth',dev='pdf'>>= 
-dd<-read.csv('data/RMI.csv')
+dd<-read.csv('RMI_Data/RMI.csv')
 mdl<-lm( NPublications ~ Year +I(Year^2), data = dd)
 visreg(mdl,main='Total Publications In Year X')
 @
@@ -624,8 +624,8 @@ a local Jacobian-based volume measurement.
 We also look at global volume. 
 
 <<vreg1,echo=TRUE,eval=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
-predictor<-as.factor( read.csv("data/phantpredictors.csv")$dx )
-gvol<-read.csv("data/globalvols.csv")
+predictor<-as.factor( read.csv("RMI_Data/phantpredictors.csv")$dx )
+gvol<-read.csv("RMI_Data/globalvols.csv")
 attach( gvol )
 mdl<-lm( vol ~  predictor  )
 
@@ -667,8 +667,8 @@ Next apply the global test to the voxelwise morphometry case.
 \frametitle{ .... voxel-wise statistics in {\bf R}}
 \transdissolve
 <<voxelwise,echo=TRUE,results='hide',warning=FALSE,highlight=TRUE,eval=TRUE>>=
-mask<-antsImageRead( "data/phantmask.nii.gz", 2 )
-logjac<-read.csv("data/phantomGlogjacs.csv") # a population of images 
+mask<-antsImageRead( "RMI_Data/phantmask.nii.gz", 2 )
+logjac<-read.csv("RMI_Data/phantomGlogjacs.csv") # a population of images 
 attach( logjac )
 nvox<-ncol(logjac)
 pvals<-rep(NA,nvox)
@@ -751,7 +751,7 @@ Exercise: What happens when you include globalvol as a covariate?
 How do we assess the importance of multiple predictors acting together
 within classic regression?
 <<anova1,echo=TRUE,eval=TRUE,results='show',warning=FALSE,out.width='.4\\linewidth'>>=
-nki<-read.csv('data/labelresultsN.csv')
+nki<-read.csv('RMI_Data/labelresultsN.csv')
 print(names(nki)[1:8])
 image(cor(as.matrix(nki[,4:37])))
 @
@@ -939,11 +939,11 @@ with sparseness}.
 \frametitle{\R Multivariate Study - PBAC}
 {\em PBAC:} \R ready medical imaging data.\newline 
 <<out.width='.4\\linewidth',dev='jpeg',results='hide',eval=TRUE,echo=FALSE>>= 
-pbacc<-list.files(path = "./data", pattern = glob2rx("pbac*csv")  ,
+pbacc<-list.files(path = "./RMI_Data", pattern = glob2rx("pbac*csv")  ,
 full.names = T )
 pbacTEcog<-read.csv(pbacc[1])
 pbacTRcog<-read.csv(pbacc[2])
-pbaci<-list.files(path = "./data", pattern = glob2rx("pbac*mha") ,
+pbaci<-list.files(path = "./RMI_Data", pattern = glob2rx("pbac*mha") ,
 full.names = T )
 pbacTEimg<-as.matrix( antsImageRead(pbaci[1], 2 ) )
 pbacTRimg<-as.matrix( antsImageRead(pbaci[2], 2 ) )
@@ -953,9 +953,9 @@ and analyze the relationship between gray matter and cognition.
 <<out.width='.4\\linewidth',dev='jpeg',results='show',eval=TRUE,echo=TRUE>>= 
 pbacTRcog[c(1,13,28),1:6]
 # also pbac imaging data comes from this mask 
-mask<-antsImageRead( list.files(path = "./data", pattern=glob2rx("gmask_2mmb.nii.gz") , full.names=T ) , 3 )
+mask<-antsImageRead( list.files(path = "./RMI_Data", pattern=glob2rx("gmask_2mmb.nii.gz") , full.names=T ) , 3 )
 # with anatomical labels 
-pbacaal<-antsImageRead( list.files(path = "./data",
+pbacaal<-antsImageRead( list.files(path = "./RMI_Data",
 pattern=glob2rx("pbac_aal.nii.gz"), full.names=T ) , 3 )
 data("aal",package="ANTsR") # description of aal
 @
@@ -1294,7 +1294,7 @@ Subject: 08143633
 blockfing = c(0, 36, 72, 108,144)
 blockfoot = c(12, 48, 84, 120, 156)
 ct<-1 
-fn<-c('data/fmri_motor_sub1_s1.nii.gz','data/fmri_motor_sub1_s2.nii.gz')[1]
+fn<-c('RMI_Data/fmri_motor_sub1_s1.nii.gz','RMI_Data/fmri_motor_sub1_s2.nii.gz')[1]
 pre<-paste('fmri_motor_',ct,sep='')
 @
 
@@ -1533,7 +1533,7 @@ Exercise:  Check the code below and run the language task studies from
 the Gigascience article. 
 <<boldlang,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
 if ( FALSE ) {
-fmri<-antsImageRead('data/fmri_covert_verb_generation_sub1_s2.nii.gz',4)
+fmri<-antsImageRead('RMI_Data/fmri_covert_verb_generation_sub1_s2.nii.gz',4)
 blocko = c(1,24, 48, 72, 96, 120, 144 )
 hrf <- hemodynamicRF( scans=dim(fmri)[4] , onsets=blocko , durations=rep(  12,  length( blocko ) ) ,  rt=2.5 )
 hrf[1:4]<-NA # first few frames are junk 
@@ -1599,7 +1599,7 @@ Arterial spin labeling (ASL) can measure cerebral blood flow (CBF)
 non-invasively and more directly than BOLD.   It requires specialized
 processing techniques not widely available.
 <<aslcbf,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.05\\linewidth',dev='jpeg'>>=
-fns<-Sys.glob( file.path( "./data/eld*nii.gz" ) )
+fns<-Sys.glob( file.path( "./RMI_Data/eld*nii.gz" ) )
 asl<-antsImageRead( fns[1] , 4 )
 perf<-aslPerfusion( asl, maskThresh=300, moreaccurate=FALSE )
 param <- list( sequence="pcasl", m0=perf$m0 )
@@ -1620,7 +1620,7 @@ plotANTsImage( cbf$meancbf ,slices="5x17x3",axis=3,outname="figure/antsrsimpcbf.
 \frametitle{fMRI Boot-Strapping}
 Load some data already processed.
 <<mybootstrap,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
-fns<-Sys.glob(file.path("./data/eld*nii.gz"))
+fns<-Sys.glob(file.path("./RMI_Data/eld*nii.gz"))
 asl<-antsImageRead( fns[1] ,4)
 seg<-antsImageRead( fns[3] ,3)
 mask<-antsImageClone( seg )

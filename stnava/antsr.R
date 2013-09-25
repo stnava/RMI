@@ -17,7 +17,7 @@ myregion<-"CentralSulcus"
 
 
 
-dd<-read.csv('data/RMI.csv')
+dd<-read.csv('RMI_Data/RMI.csv')
 mdl<-lm( NPublications ~ Year +I(Year^2), data = dd)
 visreg(mdl,main='Total Publications In Year X')
 
@@ -138,8 +138,8 @@ print( length( imgvec ) )
 
 
 
-predictor<-as.factor( read.csv("data/phantpredictors.csv")$dx )
-gvol<-read.csv("data/globalvols.csv")
+predictor<-as.factor( read.csv("RMI_Data/phantpredictors.csv")$dx )
+gvol<-read.csv("RMI_Data/globalvols.csv")
 attach( gvol )
 mdl<-lm( vol ~  predictor  )
 
@@ -158,8 +158,8 @@ visreg(mdl)
 
 
 
-mask<-antsImageRead( "data/phantmask.nii.gz", 2 )
-logjac<-read.csv("data/phantomGlogjacs.csv") # a population of images 
+mask<-antsImageRead( "RMI_Data/phantmask.nii.gz", 2 )
+logjac<-read.csv("RMI_Data/phantomGlogjacs.csv") # a population of images 
 attach( logjac )
 nvox<-ncol(logjac)
 pvals<-rep(NA,nvox)
@@ -197,7 +197,7 @@ plotANTsImage( mask, functional= list( sccansol ),
 
 
 
-nki<-read.csv('data/labelresultsN.csv')
+nki<-read.csv('RMI_Data/labelresultsN.csv')
 print(names(nki)[1:8])
 image(cor(as.matrix(nki[,4:37])))
 
@@ -317,7 +317,7 @@ pheatmap( cor( pbacTRcog , roimatrix ) , cluster_rows = F , cluster_cols =  F )
 
 
 myform<-paste( colnames( roimatrix ), collapse='+'  )
-myform<-as.formula( paste( "naming_adj~", myform , "+edu") )
+myform<-as.formula( paste( "delay_free_adj~", myform , "+edu") )
 mydf<-data.frame( pbacTRcog, roimatrix ) 
 row.names(mydf)<- paste( c(1:nrow(pbacTRcog)),"_",as.character( pbacTRcog$mmse ),sep='')
 mdl <- lm(  myform , data = mydf ) 
@@ -332,7 +332,7 @@ visreg( mdla, xvar="Temporal_Pole_Sup_L")
 
 
 
- coplot( naming_adj ~ Angular_L + Frontal_Mid_R + Temporal_Pole_Sup_L | age , data = mydf , panel = panel.smooth, rows = 1)
+ coplot( delay_free_adj ~ Angular_L + Frontal_Mid_R + Temporal_Pole_Sup_L | age , data = mydf , panel = panel.smooth, rows = 1)
 
 
 
@@ -370,8 +370,8 @@ testdf<-data.frame( testroi , edu = pbacTEcog$edu )
 
 
 predcog<-predict( mdla , newdata=testdf )
-print( paste("Test Correlation:", cor.test( pbacTEcog$naming_adj, predcog)$est  ) )
-predmdl<-lm(  predcog ~ 1 + naming_adj, data = pbacTEcog )
+print( paste("Test Correlation:", cor.test( pbacTEcog$delay_free_adj, predcog)$est  ) )
+predmdl<-lm(  predcog ~ 1 + delay_free_adj, data = pbacTEcog )
 visreg( predmdl )
 
 
@@ -383,18 +383,18 @@ for ( ind in 1:nv ) {
   myform<-paste( mytests , collapse="+" )
   vec<-antsImageRead( paste("sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
   vec<-vec[ inmask ]
-  traindf<-data.frame( gm= pbacTRimg %*% vec, pbacTRcog )
-  myform<-as.formula( paste( "gm~",myform) )
-  predlm<-lm(  myform , data=traindf )
-  predcog<-predict( predlm , newdata=pbacTEcog )
+  traindf<-data.frame( gm= pbacTRimg %*% vec, cog = as.matrix( pbacTRcog) %*% mysccan$eig1[,ind ] )
+  cogtest <- as.matrix( pbacTEcog) %*% mysccan$eig1[,ind ] 
   gmtest<-pbacTEimg %*% vec
   print( myform ) 
-  print( paste("Test Correlation:",ind, cor.test( gmtest, predcog)$est  ) )
+  print( paste("Test Correlation:",ind, cor.test( gmtest, cogtest)$est  ) )
 }
 
 
 
-predmdl<-lm(  predcog ~ 1 + naming_adj, data = pbacTEcog )
+truegm <- c( pbacTEimg %*% vec )
+predmdl<-lm(  predgm ~ truegm , data = pbacTEcog )
+print( paste("Test Correlation:", cor.test( truegm, predgm )$est  ) )
 visreg( predmdl )
 
 
@@ -452,7 +452,7 @@ c(v1,v2)[order(c(ord1,ord2))]
 blockfing = c(0, 36, 72, 108,144)
 blockfoot = c(12, 48, 84, 120, 156)
 ct<-1 
-fn<-c('data/fmri_motor_sub1_s1.nii.gz','data/fmri_motor_sub1_s2.nii.gz')[1]
+fn<-c('RMI_Data/fmri_motor_sub1_s1.nii.gz','RMI_Data/fmri_motor_sub1_s2.nii.gz')[1]
 pre<-paste('fmri_motor_',ct,sep='')
 
 
@@ -577,7 +577,7 @@ plotANTsImage(myantsimage = avg, functional = list(eigimg), slices ="1x20x1",   
 
 
 if ( FALSE ) {
-fmri<-antsImageRead('data/fmri_covert_verb_generation_sub1_s2.nii.gz',4)
+fmri<-antsImageRead('RMI_Data/fmri_covert_verb_generation_sub1_s2.nii.gz',4)
 blocko = c(1,24, 48, 72, 96, 120, 144 )
 hrf <- hemodynamicRF( scans=dim(fmri)[4] , onsets=blocko , durations=rep(  12,  length( blocko ) ) ,  rt=2.5 )
 hrf[1:4]<-NA # first few frames are junk 
@@ -633,7 +633,7 @@ for ( i in 1:10 ) {
 
 
 
-fns<-Sys.glob( file.path( "./data/eld*nii.gz" ) )
+fns<-Sys.glob( file.path( "./RMI_Data/eld*nii.gz" ) )
 asl<-antsImageRead( fns[1] , 4 )
 perf<-aslPerfusion( asl, maskThresh=300, moreaccurate=FALSE )
 param <- list( sequence="pcasl", m0=perf$m0 )
@@ -642,7 +642,7 @@ plotANTsImage( cbf$meancbf ,slices="5x17x3",axis=3,outname="figure/antsrsimpcbf.
 
 
 
-fns<-Sys.glob(file.path("./data/eld*nii.gz"))
+fns<-Sys.glob(file.path("./RMI_Data/eld*nii.gz"))
 asl<-antsImageRead( fns[1] ,4)
 seg<-antsImageRead( fns[3] ,3)
 mask<-antsImageClone( seg )
