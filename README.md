@@ -1,6 +1,8 @@
 The R programming language: a statistical foundation for reproducible studies in medical image analysis
 ==================================================================================================================
 
+Please also clone https://github.com/stnava/RMI_Data with the RMI/stnava directory 
+
 
 Outline: This 1/2 day tutorial introduces attendees to the most widely used and deeply tested statistical platform in the world and will reveal the secrets to using R for reproducible science and advanced statistics in medical imaging applications. The R programming language is increasingly employed for communicating scientific results.  Eminent journals such as Biostatistics promote articles that include R code reproducing the submission’s findings.  Industry also embraces R for its standard-setting analytics.  Recent efforts allow R to function efficiently with medical imaging datasets.  R therefore allows medical imaging researchers access to state-of-the-art methods developed by the world’s leading statisticians.  This tutorial will show how, with relative ease, attendees can process medical imaging datasets in a reproducible way.  This MRI-focused tutorial will step attendees through examples that range from basic I/O, data inspection and study organization to morphometry, fMRI connectivity analysis, DCEMRI and longitudinal statistics.
 
