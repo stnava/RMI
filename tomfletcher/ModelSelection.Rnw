@@ -1,0 +1,722 @@
+\documentclass[14pt]{beamer}
+
+%\usepackage[T1]{fontenc}
+%\setcounter{secnumdepth}{3}
+%\setcounter{tocdepth}{3}
+
+%\usepackage{times}
+\usepackage[scaled=0.85]{helvet}
+
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+\usecolortheme{orchid}
+\useinnertheme[shadow]{rounded}
+\setbeamertemplate{items}[default]
+
+\usefonttheme[onlymath]{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamerfont{smallfont}{size=\small}
+
+\title{Model Selection in R: Information Criteria and Sparsity Approaches}
+\author{Tom Fletcher \inst{1}, Nicholas Lange \inst{2}, Kristen Zygmunt \inst{1}}
+\institute{\inst{1} School of Computing and the SCI Institute, University of Utah \and \inst{2}
+  Departments of Psychiatry and Biostatistics, Harvard University}
+
+\date{September 26, 2013}
+
+\newcommand{\mypause}[1]{\pause{#1}}
+\newcommand{\myuncover}[2]{\uncover<#1>{#2}}
+\newcommand{\myitem}[1]{\item<#1>}
+\newcommand{\defn}[1]{{\bf #1}}
+
+%\newcommand{\mypause}[1]{#1}
+%\newcommand{\myuncover}[2]{#2}
+%\newcommand{\myitem}[1]{\item}
+%\newcommand{\defn}[1]{{\bf #1}}
+
+\setbeamertemplate{footline}[frame number]
+
+\begin{document}
+
+<<setup, echo=FALSE, message=FALSE>>=
+require(knitr)
+require(nlme)
+require(FindMinIC)
+require(AdaptiveSparsity)
+
+## Set some options
+opts_chunk$set(fig.align='center',fig.show='hold',out.width="0.6\\textwidth",
+               size='footnotesize',comment=NA,prompt=TRUE)
+
+## Read in the cross-sectional OASIS data, including hippocampal volumes
+x = read.csv("oasis_cross-sectional.csv")
+y = read.csv("oasis_hippocampus.csv")
+cdat = merge(x, y, by = "ID")
+
+## Let's look at only elderly subjects
+cdat = cdat[cdat$Age >= 60,]
+rownames(cdat) = NULL
+
+## Remove columns we won't need
+cdat = cdat[ , !(names(cdat) %in% c("Delay", "Hand", "SES", "Educ", "ASF"))]
+
+
+## Read in the longitudinal OASIS data
+clinical = read.csv("oasis_longitudinal.csv")
+hippo = read.csv("oasis_longitudinal_hippocampus.csv")
+ldat = merge(hippo, clinical, by.x = c("ID", "Visit"), by.y = c("Subject.ID", "Visit"))
+
+## To simplify things, we'll remove subjects that converted to dementia
+converts = unique(ldat[ldat$Group == "Converted",]$ID)
+ldat = ldat[!(ldat$ID %in% converts),]
+ldat$Group = factor(ldat$Group)
+
+# Function to plot raw longitudinal data (assumes two groups)
+long.plot =
+  function(data, yname, idname, agename, groupname, ylab = yname, main = "",
+           pch = 19, cex.main = 1.5, cex.lab = 1.25, cex.axis = 1.25, alpha = 0.5)
+{
+  cols = c(rgb(0,0,1,alpha), rgb(1,0,0,alpha))
+  y = data[,yname]
+  age = data[,agename]
+  yrange = c(min(y), max(y))
+  plot(y ~ age, ylab = ylab, xlab = "Age", main = main, ylim = yrange,
+       pch = pch, cex.main = cex.main, cex.lab = cex.lab, cex.axis = cex.axis,
+       col = cols[data[,groupname]])
+
+  ids = unique(data[,idname])
+
+  for(id in ids)
+  {
+    x = data[data[,idname] == id,]
+    lines(x[,yname] ~ x[,agename], col = cols[x[,groupname]])
+  }
+}
+
+## Longitudinal example plot
+RunLongitudinalExample = function(type = 1)
+{
+  set.seed(10)
+  numSubjects = 4
+  numTimePoints = 6
+  n = numSubjects * numTimePoints
+  t = runif(n, 0, 1) + 0.2 * rep((numSubjects - 1):0, each = 6)
+
+  b1 = rep(1:numSubjects, each = numTimePoints)
+  b2 = rep(1, n)
+
+  y = b1 + t * b2 + rnorm(n, 0, 0.2)
+  sub = as.integer(seq(0, n-1) / numTimePoints) + 1
+
+  X = data.frame(y = y, t = t, sub = as.factor(sub))
+  g = lme(y ~ t, random = ~1 | sub, data = X)
+
+  if(type == 3)
+  {
+    plot(y ~ t, pch = sub+1, lwd = 2, cex = 1.2, cex.lab = 1.2, main = "OLS vs. LME")
+    abline(lm(y ~ t, data = X), col = 'red', lwd = 3)
+
+    a = g$coefficients$fixed[1]
+    b = g$coefficients$fixed[2]
+    abline(a, b, lwd = 3)
+
+    for(i in 1:numSubjects)
+      abline(a + g$coefficients$random$sub[i,1], b, lwd = 3, lty = 2)
+
+    ##legend("topright",
+    ##       c("LME Fixed Effects", "LME Random Effects", "OLS Regression"),
+    ##       col = c("black", "black", "red"), lty = c(1, 2, 1), lwd = 3)
+  }
+  else if(type == 2)
+  {
+    plot(y ~ t, pch = sub+1, lwd = 2, cex = 1.2, cex.lab = 1.2, main = "OLS Regression")
+    abline(lm(y ~ t, data = X), col = 'red', lwd = 3)
+  }
+  else
+  {
+    plot(y ~ t, pch = 2, lwd = 2, cex = 1.2, cex.lab = 1.2, main = "OLS Regression")
+    abline(lm(y ~ t, data = X), col = 'red', lwd = 3)
+  }
+}
+@
+
+\frame{
+\vspace*{24pt}
+\maketitle
+%\vspace*{-12pt}
+%\hspace*{-12pt}\includegraphics[width=1.5in]{braininst}%\hfill
+%\hspace*{150pt}\includegraphics[width=1in]{sci}
+}
+
+\frame{
+\frametitle{Linear Model Selection}
+{\bf Linear Model:}
+\begin{align*}
+y &= X\beta + \epsilon\\
+&= \beta_0 + x_1 \beta_1 + x_2 \beta_2 + \ldots + x_K \beta_K + \epsilon\\
+&\\
+\epsilon &\sim N(0, \sigma^2)\\
+\end{align*}
+
+\uncover<2->
+{
+{\bf Model Selection Problem:}\\
+Which regressors, $x_i$, should we include in the model?
+}
+}
+
+\begin{frame}[fragile]
+\frametitle{OASIS Brain Data}
+
+{\small \url{http://www.oasis-brains.org}}
+
+<<eval=TRUE>>=
+head(cdat[,-1])
+@
+
+\begin{minipage}[t][2in]{\textwidth}
+%\begin{overprint}
+\only<1>{
+{\tt MMSE}: Mini-Mental State Exam\\
+{\tt CDR }: Clinical Dementia Rating\\
+{\tt eTIV}: Estimated Total Intracranial Volume\\
+{\tt nWBV}: Normalized Whole Brain Volume\\
+}
+
+\only<2-3>{
+{\bf Hypotheses of interest:}
+\begin{itemize}
+\item<2-> Hippocampal volume decreases with age
+\item<3-> Lower hippocampal volume is also associate with cognitive decline (as measured by MMSE, CDR)
+\end{itemize}
+}
+
+\only<4>{
+{\bf What models do we use to test these hypotheses?}
+\begin{itemize}
+\item Should we include all variables simultaneously (Age, MMSE, CDR)?
+\item Which covariates should we include (M.F, eTIV, nWBV)?\\
+\end{itemize}
+}
+\end{minipage}
+%\end{overprint}
+\end{frame}
+
+\begin{frame}
+\vspace*{24pt}
+
+\large{\it All models are wrong, but some are useful.}\\
+\vspace*{24pt}
+
+\hfill {--- George Box}
+\end{frame}
+
+\begin{frame}
+\large{\bf Why not include all the variables we have?}\\
+
+\uncover<2>{
+\begin{enumerate}
+\item Danger of overfitting
+\item Each parameter we estimate requires more data
+\end{enumerate}
+}
+\end{frame}
+
+\begin{frame}
+\large{\bf Why not just include covariates that have a ``significant'' effect in the
+  linear model?}\\
+\vspace*{24pt}
+
+\uncover<2>{Let's see!}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Age Effects Only}
+
+<<eval=TRUE>>=
+g1 = lm(RightHippoVol ~ Age, data = cdat)
+coef(summary(g1))
+@
+
+\visible<2>
+{
+\tikz[remember picture,overlay] {%
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 1.05) rectangle (9.25, 1.5);
+        }\\
+\textcolor{blue}{\noindent Age effect is significant}
+      }
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Age Effects Only}
+<<eval=TRUE>>=
+plot(RightHippoVol ~ Age, data = cdat, lwd = 3)
+abline(g1, col = 'red', lwd = 4)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Adding Sex Covariate}
+<<eval=TRUE>>=
+g2 = lm(RightHippoVol ~ Age + M.F, data = cdat)
+coef(summary(g2))
+@
+
+\visible<2>{
+\tikz[remember picture,overlay] {%
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 1) rectangle (9.25, 1.45);
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 1.45) rectangle (9.25, 1.9);
+      }\\
+\textcolor{blue}{Age effect is significant\\
+  Sex effect is significant}
+    }
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Adding Brain Volume Covariate}
+<<eval=TRUE>>=
+g3 = lm(RightHippoVol ~ Age + M.F + nWBV, data = cdat)
+coef(summary(g3))
+@
+
+\visible<2>{
+\tikz[remember picture,overlay] {%
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 1) rectangle (9.25, 1.45);
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 1.45) rectangle (9.25, 1.9);
+    \draw[ultra thick, red, rounded corners]
+        (7.25, 1.9) rectangle (9.25, 2.3);
+      }\\
+\textcolor{red}{Age effect is NOT significant\\}
+\textcolor{blue}{Sex effect is significant\\
+Whole brain volume effect is significant}
+    }
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Adding Clinical Dementia Rating}
+<<eval=TRUE>>=
+g4 = lm(RightHippoVol ~ Age + M.F + nWBV + CDR, data = cdat)
+coef(summary(g4))
+@
+
+\visible<2>{
+\tikz[remember picture,overlay] {%
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 1) rectangle (9.25, 1.45);
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 1.45) rectangle (9.25, 1.9);
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 1.9) rectangle (9.25, 2.3);
+    \draw[ultra thick, blue, rounded corners]
+        (7.25, 2.3) rectangle (9.25, 2.7);
+      }\\
+\textcolor{blue}{Everything is significant!}
+}
+
+\end{frame}
+
+\frame{
+\frametitle{Summary}
+\begin{itemize}
+\item<1-> Can't choose models based on $p$-values!
+\item<2-> Statistical significance can be manipulated by inclusion/exclusion of
+covariates
+\item<3-> Need a systematic and automatic method for selecting models
+\item<4-> Included variables and model selection procedure should be decided before analysis
+\end{itemize}
+}
+
+\begin{frame}[fragile]
+\frametitle{Highest $R^2$ or Likelihood?}
+<<eval=TRUE,echo=FALSE>>=
+models = list(g1, g2, g3, g4)
+r2 = sapply(models, function(g) { summary(g)$r.squared })
+plot(1:4, r2, xlab = "Model", ylab = expression(R^2), lwd = 4, type = 'b',
+     xaxt = 'n', main = expression(paste(R^2, " as Model Complexity Increases")),
+     cex.lab = 1.5, cex.main = 1.5)
+axis(1, at = 1:4)
+@
+
+\visible<2>{\bf $R^2$ always increases when you add covariates}
+\end{frame}
+
+\frame{
+\frametitle{Occam's Razor}
+\large{\bf Choose the simplest model that explains your data, i.e., the fewest parameters.}
+}
+
+\frame{
+\frametitle{Akaike Information Criteria}
+Pick the model that minimizes
+$$\mathrm{AIC} = 2k - 2 \ln (L)$$
+
+$k$: number of parameters\\
+$L$: log-likelihood\\
+\vspace*{12pt}
+
+\visible<2>{
+Tradeoff between
+\begin{center}
+{\bf maximizing} likelihood\\ and\\ {\bf minimizing} number of parameters}
+\end{center}
+}
+
+\frame{
+\frametitle{AIC Under Gaussian Likelihood}
+If the model has normally-distributed errors,
+\begin{align*}
+\mathrm{AIC} &= 2k - 2 \ln (L)\\
+&= 2k + n \ln\left(\frac{1}{n} \sum_{i = 1}^n \hat{\epsilon_i}^2 \right)
+\end{align*}
+
+$\hat{\epsilon_i}$: estimated residual of $i$th data point
+}
+
+\frame{
+\frametitle{Motivation of AIC}
+\begin{itemize}
+\item<1-> We want the best approximation of some ``true'' density $f(x)$.
+\item<1-> Given candidate models: $g_i(x | \theta_i)$
+\item<2-> Minimize the Kullback-Leibler divergence $K(g_i, f)$.
+\item<3-> AIC approximates this KL divergence (up to a constant in $g_i$)
+\end{itemize}
+}
+
+\frame{
+  \frametitle{AICc: Bias-corrected AIC}
+\begin{itemize}
+\item<1-> AIC has a first-order correction for bias
+\item<2-> The bias can still be significant for small $n$
+\item<3-> A second-order correction of the bias gives:
+  $$\mathrm{AICc} = \mathrm{AIC} + \frac{2k(k + 1)}{n - k - 1}$$
+\end{itemize}
+}
+
+%\frame{
+%\frametitle{Bayesian Information Criteria}
+%}
+
+\begin{frame}[fragile]
+\frametitle{R Package: {\tt FindMinIC}}
+Install from CRAN:
+<<echo=TRUE,eval=FALSE>>=
+install.packages("FindMinIC")
+@
+\begin{itemize}
+\item Tests all $2^K$ possible subsets of $K$ regressors
+\item Ranks them based on AIC (or AICc, or BIC)
+\item Regressors can be fixed to always be included
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{OASIS Example Revisited}
+<<echo=TRUE,tidy=FALSE>>=
+aicModels = FindMinIC(
+  RightHippoVol ~ Age + CDR + MMSE + M.F + nWBV + eTIV,
+  data = cdat)
+print(summary(aicModels)$table[1:5,])
+@
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{OASIS Example Revisited}
+<<echo=FALSE>>=
+opts_chunk$set(size = "tiny")
+@
+<<echo=TRUE,tidy=FALSE>>=
+summary(getFirstModel(aicModels))
+@
+<<echo=FALSE>>=
+opts_chunk$set(size = "footnotesize")
+@
+\end{frame}
+
+\frame{
+  \frametitle{Model Selection via Sparsity}
+\begin{itemize}
+\item Idea: force coefficients to zero by penalizing non-zero entries
+\item Sparse approximation:
+$$\hat{\beta} = \arg \min_{\beta} \|y - X\beta\|^2 + \lambda \|\beta\|_0.$$
+Using $l_0$ norm:
+$$\|\beta\|_0 = \text{``number of non-zero elements of $\beta$''}$$
+\item This is an NP-hard optimization problem
+\end{itemize}
+}
+
+\frame{
+  \frametitle{The lasso\footnote{{\it Tibshirani,  {\it J. Royal. Statist. Soc B.}, 1996}}}
+\begin{itemize}
+\item The $l_1$ norm is a convex relaxation of the $l_0$ norm:
+$$\|\beta\|_1 = \sum_{i=1}^K |\beta_i|$$
+\item The lasso estimator is
+$$\hat{\beta} = \arg \min_{\beta} \|y - X\beta\|^2 + \lambda \|\beta\|_1$$
+\item This is now a convex optimization problem
+\end{itemize}
+}
+
+\frame{
+  \frametitle{Adaptive Sparsity\footnote{{\it Figueiredo, PAMI 2003}}}
+\begin{itemize}
+\item<1-> Hierarchical prior on $\beta$:
+\begin{align*}
+\beta &\sim N(0, \tau)\\
+\tau &\propto \frac{1}{\tau}
+\end{align*}
+\item<2-> Parameter-free Jeffreys' hyperprior on $\tau$
+\item<3-> MAP estimation of $\beta$ by EM algorithm
+\item<4-> After marginalizing $\tau$, equivalent to a log penalty:
+$$\log p(\beta) \propto \log(|\beta| + \delta) - \log(\delta)$$
+(Need the $\delta > 0$ fudge factor for numerics)
+\end{itemize}
+}
+
+\begin{frame}[fragile]
+\frametitle{Comparison of Penalty Functions}
+<<echo=FALSE, eval=TRUE>>=
+t = seq(-2, 2, 0.01)
+plot(0, 0, pch = 19, xlab = expression(beta), ylab = "Penalty",
+     cex = 2, ylim = c(-0.5, 2), xlim = c(-2, 2), cex.lab = 1.5)
+points(0, 1, cex = 2)
+lines(c(-2, -0.05), c(1, 1), lwd = 3)
+lines(c(0.05, 2), c(1, 1), lwd = 3)
+abline(0, 0, lty = 2, col = "grey")
+lines(c(0, 0), c(-0.5, 2), lty = 2, col = "grey")
+
+lines(t, abs(t), lwd = 3, col = 'red')
+
+lines(t, (1/15) * (log(abs(t) + 1e-6) - log(1e-6)), lwd = 3, col = 'blue')
+
+legend("bottomleft", c("L0", "L1", "Log"), lwd = 3, col = c("black", "red", "blue"))
+@
+\end{frame}
+
+\frame{
+  \frametitle{R Package: {\tt AdaptiveSparsity}}
+Install from CRAN:
+<<eval=FALSE>>=
+install.packages(AdaptiveSparsity)
+@
+
+\begin{itemize}
+\item Implements Figueiredo's adaptively sparse linear regression ({\tt aslm})
+\item Also has a method for estimating sparse Gaussian graphical models ({\tt
+  asggm})\footnote{{\it Wong, Awate, Fletcher, ICML 2013}}
+\end{itemize}
+}
+
+\begin{frame}[fragile]
+  \frametitle{OASIS Example Re-Revisited}
+<<eval=TRUE, tidy=FALSE>>=
+g = aslm(
+  RightHippoVol ~ Age + CDR + MMSE + M.F + nWBV + eTIV,
+  data = cdat)
+as.matrix(coef(g))
+@
+
+\uncover<2>{
+{\bf Same coefficients chosen by AIC!}
+}
+\end{frame}
+
+%\frame{
+%\frametitle{Example: Polynomial Regression}
+%}
+
+\begin{frame}
+\frametitle{An Interesting Connection}
+\begin{center}
+Sparse approximation is {\bf equivalent} to AIC!
+\end{center}
+\uncover<2->
+{
+\begin{align*}
+\uncover<2->{
+\hat{\beta} &= \arg \min_{\beta} \|y - X\beta\|^2 + \lambda \|\beta\|_0 & \\}
+\uncover<3->{
+&= \arg \min_{k, \|\beta\|_0 = k} -2 \ln L(\beta | y) + 2k,
+& \text{(setting $\lambda = 2$)}\\}
+\uncover<4->{
+&= \arg \min_{k, \|\beta\|_0 = k} \mathrm{AIC}(\beta) & \\}
+\end{align*}
+}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Longitudinal Analysis}
+<<echo = TRUE, eval = TRUE, tidy = FALSE>>=
+long.plot(ldat, "RightHippoVol", "ID", "Age", "Group",
+  main = "OASIS Longitudinal Hippocampus Data")
+legend("topright", c("Nondemented", "Demented"),
+       col = c("red", "blue"), pch = 19)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+ \frametitle{Why is Longitudinal Different?}
+\only<1>{
+<<eval=TRUE>>=
+RunLongitudinalExample()
+@
+}
+\only<2>{
+<<eval=TRUE>>=
+RunLongitudinalExample(type = 2)
+@
+}
+\only<3>{
+<<eval=TRUE>>=
+RunLongitudinalExample(type = 3)
+@
+}
+\end{frame}
+
+\begin{frame}
+\frametitle{Linear Mixed-Effects Models}
+\begin{center}
+\begin{tabular}{rl}
+Subject-level: & $\quad y_i = X_i \beta + Z_i b_i + \epsilon$\\
+Group-level: & $\quad b_i \sim N(0, \Lambda)$\\
+\end{tabular}
+\end{center}
+
+{\bf Fixed Effects} ($\beta$): coefficients shared by all individuals\\
+{\bf Random Effects} ($b_i$): perturbation of $i$th individual\\
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Fitting Linear Mixed-Effects Models in R}
+<<eval = TRUE, echo = TRUE, tidy = FALSE>>=
+ldat$cAge = ldat$Age - mean(ldat$Age)
+lmeExample = lme(RightHippoVol ~ cAge * Group,
+                 random = ~1 | ID, data = ldat)
+@
+\visible<2>
+{
+\tikz[overlay] {%
+    \draw[ultra thick, blue, rounded corners]
+        (0, 1.9) rectangle (8, 2.3);
+        }\\
+\begin{minipage}[t][1in]{\textwidth}
+\textcolor{blue}{\noindent {\bf Important to center Age}}
+\end{minipage}
+}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Fitting Linear Mixed-Effects Models in R}
+<<eval = FALSE, echo = TRUE, tidy = FALSE>>=
+ldat$cAge = ldat$Age - mean(ldat$Age)
+lmeExample = lme(RightHippoVol ~ cAge * Group,
+                 random = ~1 | ID, data = ldat)
+@
+\tikz[overlay] {%
+    \draw[ultra thick, blue, rounded corners]
+    (6.4, 1.45) rectangle (9, 1.9);
+        }\\
+\begin{minipage}[t][1in]{\textwidth}
+\textcolor{blue}{\noindent {\bf Interaction term:\\ expands to {\tt cAge + Group + cAge * Group}}}
+\end{minipage}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Fitting Linear Mixed-Effects Models in R}
+<<eval = FALSE, echo = TRUE, tidy = FALSE>>=
+ldat$cAge = ldat$Age - mean(ldat$Age)
+lmeExample = lme(RightHippoVol ~ cAge * Group,
+                 random = ~1 | ID, data = ldat)
+@
+\tikz[overlay] {%
+    \draw[ultra thick, blue, rounded corners]
+    (3.3, 1.1) rectangle (6.6, 1.45);
+        }\\
+\begin{minipage}[t][1in]{\textwidth}
+\textcolor{blue}{\noindent {\bf Random Effects (only random intercepts)}}
+\end{minipage}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{LME Output}
+<<eval = TRUE, echo = FALSE>>=
+opts_chunk$set(size = "tiny")
+@
+<<eval = TRUE, echo = TRUE>>=
+summary(lmeExample)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Model Selection using {\tt FindMinIC}}
+<<eval = TRUE, echo = FALSE>>=
+opts_chunk$set(size = "footnotesize")
+@
+<<eval = TRUE, tidy = FALSE>>=
+lmeModels = FindMinIC(coly="RightHippoVol",
+  candidate = c("cAge", "CDR", "Group",
+                "cAge:Group", "nWBV", "eTIV"),
+  modeltype = "lme", group = "ID", data = ldat)
+print(summary(lmeModels)$table[1:5,])
+@
+\visible<2>
+{
+\tikz[remember picture,overlay] {%
+    \draw[ultra thick, blue, rounded corners]
+        (0, 2.35) rectangle (9.6, 2.8);
+        }\\
+\textcolor{blue}{\noindent {\bf Need to include cAge and Group with cAge:Group}}
+      }
+\end{frame}
+
+\begin{frame}[fragile]
+<<eval=TRUE, echo = FALSE>>=
+opts_chunk$set(out.width="0.8\\textwidth", size = "tiny")
+@
+
+<<eval = TRUE>>=
+g = getNthModel(lmeModels, 2)
+summary(g)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<eval=TRUE, echo = FALSE>>=
+opts_chunk$set(out.width="0.8\\textwidth")
+@
+\only<1>{
+<<eval = TRUE, echo = FALSE>>=
+long.plot(ldat, "RightHippoVol", "ID", "Age", "Group",
+  main = "OASIS Longitudinal Hippocampus Data")
+legend("topright", c("Nondemented", "Demented"),
+       col = c("red", "blue"), pch = 19)
+@
+}
+\only<2>
+{
+<<eval = TRUE, echo=FALSE>>=
+long.plot(ldat, "RightHippoVol", "ID", "Age", "Group",
+  main = "OASIS Longitudinal Hippocampus Data")
+legend("topright", c("Nondemented", "Demented"),
+       col = c("red", "blue"), pch = 19)
+g = lme(RightHippoVol ~ Age * Group, random = ~1 | ID, data = ldat)
+abline(g$coefficients$fixed[1], g$coefficients$fixed[2], col = 'blue', lwd = 3)
+abline(g$coefficients$fixed[1] + g$coefficients$fixed[3],
+       g$coefficients$fixed[2] + g$coefficients$fixed[4], col = 'red', lwd = 3)
+@
+}
+\end{frame}
+
+\frame
+{
+  \begin{center}
+  \Large{\bf Thank You!}
+  \end{center}
+}
+\end{document}

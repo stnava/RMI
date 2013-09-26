@@ -1,0 +1,7 @@
+#!/usr/bin/env Rscript
+library(knitr)
+knit('ModelSelection.Rnw',tangle=TRUE)
+knit('ModelSelection.Rnw',tangle=FALSE)
+system('pdflatex ModelSelection ')
+
+system('rm *log *aux')
