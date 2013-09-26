@@ -1,10 +1,5 @@
 \documentclass[14pt]{beamer}
 
-%\usepackage[T1]{fontenc}
-%\setcounter{secnumdepth}{3}
-%\setcounter{tocdepth}{3}
-
-%\usepackage{times}
 \usepackage[scaled=0.85]{helvet}
 
 \usepackage{tikz}
@@ -24,16 +19,6 @@
   Departments of Psychiatry and Biostatistics, Harvard University}
 
 \date{September 26, 2013}
-
-\newcommand{\mypause}[1]{\pause{#1}}
-\newcommand{\myuncover}[2]{\uncover<#1>{#2}}
-\newcommand{\myitem}[1]{\item<#1>}
-\newcommand{\defn}[1]{{\bf #1}}
-
-%\newcommand{\mypause}[1]{#1}
-%\newcommand{\myuncover}[2]{#2}
-%\newcommand{\myitem}[1]{\item}
-%\newcommand{\defn}[1]{{\bf #1}}
 
 \setbeamertemplate{footline}[frame number]
 
@@ -144,9 +129,6 @@ RunLongitudinalExample = function(type = 1)
 \frame{
 \vspace*{24pt}
 \maketitle
-%\vspace*{-12pt}
-%\hspace*{-12pt}\includegraphics[width=1.5in]{braininst}%\hfill
-%\hspace*{150pt}\includegraphics[width=1in]{sci}
 }
 
 \frame{
@@ -176,7 +158,7 @@ head(cdat[,-1])
 @
 
 \begin{minipage}[t][2in]{\textwidth}
-%\begin{overprint}
+
 \only<1>{
 {\tt MMSE}: Mini-Mental State Exam\\
 {\tt CDR }: Clinical Dementia Rating\\
@@ -200,7 +182,7 @@ head(cdat[,-1])
 \end{itemize}
 }
 \end{minipage}
-%\end{overprint}
+
 \end{frame}
 
 \begin{frame}
@@ -354,7 +336,7 @@ axis(1, at = 1:4)
 }
 
 \frame{
-\frametitle{Akaike Information Criteria}
+\frametitle{Akaike Information Criteria\footnote{Akaike, IEEE TAC, 1974}}
 Pick the model that minimizes
 $$\mathrm{AIC} = 2k - 2 \ln (L)$$
 
@@ -385,7 +367,12 @@ $\hat{\epsilon_i}$: estimated residual of $i$th data point
 \begin{itemize}
 \item<1-> We want the best approximation of some ``true'' density $f(x)$.
 \item<1-> Given candidate models: $g_i(x | \theta_i)$
-\item<2-> Minimize the Kullback-Leibler divergence $K(g_i, f)$.
+\item<2-> Minimize the Kullback-Leibler divergence:
+\end{itemize}
+\begin{align*}
+K(f, g_i) = \int f(x) \ln f(x) dx - \int f(x) \ln g_i(x | \theta_i) dx
+\end{align*}
+\begin{itemize}
 \item<3-> AIC approximates this KL divergence (up to a constant in $g_i$)
 \end{itemize}
 }
@@ -400,9 +387,12 @@ $\hat{\epsilon_i}$: estimated residual of $i$th data point
 \end{itemize}
 }
 
-%\frame{
-%\frametitle{Bayesian Information Criteria}
-%}
+\frame{
+  \frametitle{Nice Review Article on AIC}
+  Burnham, K. P.; Anderson, D. R. (2004), ``Multimodel inference:
+  understanding AIC and BIC in Model Selection'', Sociological
+  Methods and Research 33: 261-304.
+}
 
 \begin{frame}[fragile]
 \frametitle{R Package: {\tt FindMinIC}}
@@ -526,10 +516,6 @@ as.matrix(coef(g))
 {\bf Same coefficients chosen by AIC!}
 }
 \end{frame}
-
-%\frame{
-%\frametitle{Example: Polynomial Regression}
-%}
 
 \begin{frame}
 \frametitle{An Interesting Connection}
