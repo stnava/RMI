@@ -1,3 +1,20 @@
+\documentclass[14pt]{beamer}
+
+\usepackage[scaled=0.85]{helvet}
+
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+\usecolortheme{orchid}
+\useinnertheme[shadow]{rounded}
+\setbeamertemplate{items}[default]
+
+\usefonttheme[onlymath]{serif}
+\setbeamertemplate{navigation symbols}{}
+\setbeamerfont{smallfont}{size=\small}
+
+\usepackage{verbatim}
+\begin{comment}
 \documentclass{beamer}
 \usetheme{Stats}
 \setbeamercovered{transparent}
@@ -12,6 +29,8 @@
 \usepackage{alltt}
 \usepackage{url}
 \usepackage{breakurl}
+\end{comment}
+
 \newenvironment<>{problock}[1]{%
   \begin{actionenv}#2%
       \def\insertblocktitle{#1}%
@@ -1089,20 +1108,20 @@ Run SCCAN between raw GM data and cognition
 <<out.width='.6\\linewidth',dev='pdf',echo=2,eval=TRUE,results='hide'>>= 
 nv<-5
 mysccan<-sparseDecom2( inmatrix=list( as.matrix(pbacTRcog), pbacTRimg
-) , inmask=c( NA , mask ), smooth = 1 ,
+) , inmask=c( NA , mask ), smooth = 1 , statdir ="/tmp/" , robust = 1 ,
   sparseness=c( -0.07, 0.2 ), nvecs=nv, its=3 , perms=0, cthresh=c(0,250) ) 
 @
 <<out.width='.6\\linewidth',dev='pdf',echo=FALSE,eval=TRUE,results='show'>>= 
 for ( ind in 1:nv ) {
   mytests<-names( pbacTRcog )[ abs( mysccan$eig1[,ind] ) > 0 ]
   myform<-paste( mytests , collapse="+" )
-  vec<-antsImageRead( paste("sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
+  vec<-antsImageRead( paste("/tmp/sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
   vec<-vec[ inmask ]
   traindf<-data.frame( gm= pbacTRimg %*% vec, pbacTRcog )
   myform<-as.formula( paste( "gm~",myform) )
   predlm<-lm(  myform , data=traindf )
   predcog<-predict( predlm , newdata=pbacTRcog )
-  gmtest<-pbacTRimg %*% vec
+  gmtest<-c( pbacTRimg %*% vec )
   print( myform ) 
   print( paste("Train Correlation:",ind, cor.test( gmtest, predcog)$est  ) )
 }
@@ -1155,11 +1174,11 @@ Predict the test voxel data from cognition id'd by SCCAN.
 for ( ind in 1:nv ) {
   mytests<-names( pbacTRcog )[ abs( mysccan$eig1[,ind] ) > 0 ]
   myform<-paste( mytests , collapse="+" )
-  vec<-antsImageRead( paste("sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
+  vec<-antsImageRead( paste("/tmp/sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
   vec<-vec[ inmask ]
   traindf<-data.frame( gm= pbacTRimg %*% vec, cog = as.matrix( pbacTRcog) %*% mysccan$eig1[,ind ] )
   cogtest <- as.matrix( pbacTEcog) %*% mysccan$eig1[,ind ] 
-  gmtest<-pbacTEimg %*% vec
+  gmtest<-c( pbacTEimg %*% vec )
   print( myform ) 
   print( paste("Test Correlation:",ind, cor.test( gmtest, cogtest)$est  ) )
 }
@@ -1173,9 +1192,8 @@ The SCCAN model is equally predictive but much more specific.
 \begin{frame}[fragile]
 \frametitle{Prediction: PBAC---Cognition from Brain}
 <<predictpbac2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='show',fig.width=4,fig.height=4,out.width='.7\\linewidth',dev='pdf'>>=
-truegm <- c( pbacTEimg %*% vec )
-predmdl<-lm(  predgm ~ truegm , data = pbacTEcog )
-print( paste("Test Correlation:", cor.test( truegm, predgm )$est  ) )
+predmdl<-lm(  cogtest ~ c(gmtest) , data = pbacTEcog )
+print( paste("Test Correlation:", cor.test( cogtest, gmtest )$est  ) )
 visreg( predmdl )
 @
 \end{frame}
@@ -1207,6 +1225,9 @@ print(paste("prediction % misclassification" , dd * ntests ) )
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}[fragile]
 \frametitle{Prediction: BRATS Challenge}
+\begin{center}
+\includegraphics[width=7in]{./figure/nick_brats.png}
+\end{center}
 \end{frame}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -1294,16 +1315,15 @@ Subject: 08143633
 blockfing = c(0, 36, 72, 108,144)
 blockfoot = c(12, 48, 84, 120, 156)
 ct<-1 
-fn<-c('RMI_Data/fmri_motor_sub1_s1.nii.gz','RMI_Data/fmri_motor_sub1_s2.nii.gz')[1]
+fn<-c('RMI_Data/fmri_motor_sub1_s1.nii.gz','RMI_Data/fmri_motor_sub1_s2.nii.gz')
 pre<-paste('fmri_motor_',ct,sep='')
 @
 
 <<boldmotor2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
-  fmri<-antsImageRead( fn , 4 )
+  fmri<-antsImageRead( fn[2] , 4 )
   hrf <- hemodynamicRF( scans=dim(fmri)[4] , onsets=blockfing , durations=rep(  12,  length( blockfing ) ) ,  rt=2.5 )
   hrf[1:4]<-NA # first few frames are junk 
-  myvars<-getfMRInuisanceVariables( fmri, moreaccurate = FALSE ,
-  maskThresh=100 )
+  myvars<-getfMRInuisanceVariables( fmri, moreaccurate = FALSE ,  maskThresh=100 )
 @
 \end{frame}
 
@@ -1313,7 +1333,6 @@ pre<-paste('fmri_motor_',ct,sep='')
 The previous functions compute \R friendly variables for fMRI
 processing: Nuisance, mean, mask, matrix.  $+$ the HRF.
 <<boldmotor3,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
-  mat<-myvars$matrixTimeSeries
   avg<-myvars$avgImage
   mask<-myvars$mask 
   nuis<-( myvars$nuisancevariables )
@@ -1325,24 +1344,50 @@ processing: Nuisance, mean, mask, matrix.  $+$ the HRF.
 \end{frame}  
 
 
+<<fmrilm,echo=FALSE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide'>>=
+source('fmrilm.R')
+@
+
+
+
 \begin{frame}[fragile]
 \frametitle{BOLD fMRI Motor Tasks 3}
 Use multiple regression to relate a task-design (convolved with HRF) to BOLD activation.
 <<boldmotor4,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
-  globsig <- myvars$globalsignal 
+# see http://mumford.fmripower.org/lev1.pdf
+  mat  <- myvars$matrixTimeSeries
+  SmoothImage(4,fmri,1,fmri)
+  mat <- timeseries2matrix( fmri, mask )
+# should also filter the hrf ?  should normalize each column to constant?
+#  mat  <- filterfMRIforNetworkAnalysis( cbind(mat) , 2.5, cbfnetwork = "BOLD" , freqLo=0.01 , freqHi = 0.5  )$filteredTimeSeries
+  globsig <- apply( mat, FUN=mean, MARGIN=1 ) 
+  arcoefs<-ar( globsig, FALSE, 2 )$ar  # similar to SPM's  autoregression estimate
+  # now use arcoefs to estimate inv cov mat 
+  autocov<-rep(NA,length(globsig) )
+  for ( i in 1:length(globsig) ) autocov[i]<-0.2^(i-1)
+  autocovmat<-matrix( rep(NA,length(globsig)*length(globsig)) ,  ncol=length(globsig) )
+  for ( i in 1:length(globsig) ) autocovmat[i,i:length(globsig)]<-shift( autocov, i-1)[i:length(globsig)] 
+  tautocovmat<-t( autocovmat )
+  autocovmat[ is.na( autocovmat ) ] <- tautocovmat[ is.na( autocovmat ) ] 
+  autocovmat<-autocovmat*arcoefs[1]+diag(length(globsig))*arcoefs[2]  # again spm style
+  autocovmat<-ginv( autocovmat ) # depends on MASS generalized inverse 
   betas<-rep(NA, ncol( mat ) )
+  desmat<-cbind( hrf, globsig, nuis[,2:7] )
+  mat <- autocovmat %*% mat
+  desmat <- autocovmat %*% desmat 
+  colnames( desmat )<-c("hrf","globsig",colnames(nuis)[2:7])
   for ( i in 1:ncol(mat) ) {
     vox<-mat[ , i ]
-    mdl<-lm( vox ~  hrf + globsig + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( nuis )  ) 
+    mdl<-lm( vox ~  hrf + globsig + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( desmat )  ) 
     betas[i]<-coefficients(summary(mdl))[2,3] # probably better way
     }
   betaimg<-antsImageClone( mask ) # put beta vals in image space
   betaimg[ mask > 0.5 ] <- betas 
-  print( max( abs( betas ) ) )  # around 10 or so 
-  # much much faster but i haven't figured out how to get results out easily
-  fastResults<-lm( mat[,1:2] ~  hrf +  myvars$globalsignal  + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( nuis )  ) 
+  print( paste( max( abs( betas ) ) ,  max( ( betas ) )  ) )  # around 10 or so 
   antsImageWrite(betaimg, paste(pre,"betas.nii.gz",sep="") )
-  @
+  # much much faster but i haven't figured out how to get results out easily
+ #  fastResults<-lm( mat[,1:2] ~  hrf +  myvars$globalsignal  + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( nuis )  ) 
+ @
 \end{frame}
 
 \begin{frame}[fragile]
@@ -1413,7 +1458,7 @@ the nuisance variables.
 <<boldmotor8,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
 nvecs<-11
 ff <- sparseDecom(rmat[!is.na(hrf), ], mask, 1.25/nvecs, nvecs,
-    its = 5, cthresh = 5, smooth = 1, z = -0.9)
+    its = 5, cthresh = 5, smooth = 1, z = -0.9 , statdir ="/tmp/" )
 for ( i in 1:nvecs ) {
   print(paste("Test",i))
   mdl<-lm( ff$projections[,i]  ~  cblock + myvars$globalsignal[  !is.na(hrf)] +  motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data =  data.frame( nuis[!is.na(hrf),]  ) )
@@ -1526,6 +1571,7 @@ plotANTsImage(myantsimage = avg, functional = list(eigimg), slices ="1x20x1",   
 
 
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}[fragile]
 \frametitle{BOLD fMRI Language Tasks}
@@ -1574,7 +1620,8 @@ cblock <- as.numeric(hrf[5:length(hrf)])
 cblock2 <- as.numeric( cblock > 0 )
 mypreds<-as.matrix( cbind( cblock, cblock2 ) )
 sccan<-sparseDecom2( inmatrix=list( rmat[5:length(hrf),] , mypreds ), inmask = c( mask , NA ) ,
-   sparseness=c( 0.1, 0.5 ), nvecs=1, its=3, smooth=1, perms=5, cthresh = c(11, 0)) 
+   sparseness=c( 0.1, 0.5 ), nvecs=1, its=3, smooth=1, perms=5,
+   cthresh = c(11, 0), statdir ="/tmp/" )
 antsImageWrite( sccan$eig1[[1]] , 'sccan_lang.nii.gz' )
 #
 # eigenanatomy 
@@ -1601,10 +1648,12 @@ processing techniques not widely available.
 <<aslcbf,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.05\\linewidth',dev='jpeg'>>=
 fns<-Sys.glob( file.path( "./RMI_Data/eld*nii.gz" ) )
 asl<-antsImageRead( fns[1] , 4 )
-perf<-aslPerfusion( asl, maskThresh=300, moreaccurate=FALSE )
+source("~/code/RMI_install/ANTsR_src/ANTsR/R/antsr_frequency_filter.R")
+source("~/code/RMI_install/ANTsR_src/ANTsR/R/aslPerfusion.R")
+perf<-aslPerfusion( asl, maskThresh=300, moreaccurate=FALSE , dorobust=0.95 )
 param <- list( sequence="pcasl", m0=perf$m0 )
 cbf <- quantifyCBF( perf$perfusion, perf$mask, param )
-plotANTsImage( cbf$meancbf ,slices="5x17x3",axis=3,outname="figure/antsrsimpcbf.jpeg")
+plotANTsImage( cbf$meancbf ,slices="5x17x3",axis=3) # ,outname="figure/antsrsimpcbf.jpeg")
 @
 \begin{figure}[b]
 \begin{center} 

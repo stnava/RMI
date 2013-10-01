@@ -256,11 +256,11 @@ heplot(mycca, xpd=TRUE, scale=0.3)
 
 
 
-pbacc<-list.files(path = "./data", pattern = glob2rx("pbac*csv")  ,
+pbacc<-list.files(path = "./RMI_Data", pattern = glob2rx("pbac*csv")  ,
 full.names = T )
 pbacTEcog<-read.csv(pbacc[1])
 pbacTRcog<-read.csv(pbacc[2])
-pbaci<-list.files(path = "./data", pattern = glob2rx("pbac*mha") ,
+pbaci<-list.files(path = "./RMI_Data", pattern = glob2rx("pbac*mha") ,
 full.names = T )
 pbacTEimg<-as.matrix( antsImageRead(pbaci[1], 2 ) )
 pbacTRimg<-as.matrix( antsImageRead(pbaci[2], 2 ) )
@@ -269,9 +269,9 @@ pbacTRimg<-as.matrix( antsImageRead(pbaci[2], 2 ) )
 
 pbacTRcog[c(1,13,28),1:6]
 # also pbac imaging data comes from this mask 
-mask<-antsImageRead( list.files(path = "./data", pattern=glob2rx("gmask_2mmb.nii.gz") , full.names=T ) , 3 )
+mask<-antsImageRead( list.files(path = "./RMI_Data", pattern=glob2rx("gmask_2mmb.nii.gz") , full.names=T ) , 3 )
 # with anatomical labels 
-pbacaal<-antsImageRead( list.files(path = "./data",
+pbacaal<-antsImageRead( list.files(path = "./RMI_Data",
 pattern=glob2rx("pbac_aal.nii.gz"), full.names=T ) , 3 )
 data("aal",package="ANTsR") # description of aal
 
@@ -338,7 +338,7 @@ visreg( mdla, xvar="Temporal_Pole_Sup_L")
 
 nv<-5
 mysccan<-sparseDecom2( inmatrix=list( as.matrix(pbacTRcog), pbacTRimg
-) , inmask=c( NA , mask ), smooth = 1 ,
+) , inmask=c( NA , mask ), smooth = 1 , statdir ="/tmp/" , robust = 1 ,
   sparseness=c( -0.07, 0.2 ), nvecs=nv, its=3 , perms=0, cthresh=c(0,250) ) 
 
 
@@ -346,13 +346,13 @@ mysccan<-sparseDecom2( inmatrix=list( as.matrix(pbacTRcog), pbacTRimg
 for ( ind in 1:nv ) {
   mytests<-names( pbacTRcog )[ abs( mysccan$eig1[,ind] ) > 0 ]
   myform<-paste( mytests , collapse="+" )
-  vec<-antsImageRead( paste("sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
+  vec<-antsImageRead( paste("/tmp/sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
   vec<-vec[ inmask ]
   traindf<-data.frame( gm= pbacTRimg %*% vec, pbacTRcog )
   myform<-as.formula( paste( "gm~",myform) )
   predlm<-lm(  myform , data=traindf )
   predcog<-predict( predlm , newdata=pbacTRcog )
-  gmtest<-pbacTRimg %*% vec
+  gmtest<-c( pbacTRimg %*% vec )
   print( myform ) 
   print( paste("Train Correlation:",ind, cor.test( gmtest, predcog)$est  ) )
 }
@@ -381,20 +381,19 @@ visreg( predmdl )
 for ( ind in 1:nv ) {
   mytests<-names( pbacTRcog )[ abs( mysccan$eig1[,ind] ) > 0 ]
   myform<-paste( mytests , collapse="+" )
-  vec<-antsImageRead( paste("sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
+  vec<-antsImageRead( paste("/tmp/sccaView2vec00",ind-1,".nii.gz",sep='') ,  3 )
   vec<-vec[ inmask ]
   traindf<-data.frame( gm= pbacTRimg %*% vec, cog = as.matrix( pbacTRcog) %*% mysccan$eig1[,ind ] )
   cogtest <- as.matrix( pbacTEcog) %*% mysccan$eig1[,ind ] 
-  gmtest<-pbacTEimg %*% vec
+  gmtest<-c( pbacTEimg %*% vec )
   print( myform ) 
   print( paste("Test Correlation:",ind, cor.test( gmtest, cogtest)$est  ) )
 }
 
 
 
-truegm <- c( pbacTEimg %*% vec )
-predmdl<-lm(  predgm ~ truegm , data = pbacTEcog )
-print( paste("Test Correlation:", cor.test( truegm, predgm )$est  ) )
+predmdl<-lm(  cogtest ~ c(gmtest) , data = pbacTEcog )
+print( paste("Test Correlation:", cor.test( cogtest, gmtest )$est  ) )
 visreg( predmdl )
 
 
@@ -527,7 +526,7 @@ pre<-paste('fmri_motor_',ct,sep='')
 
 nvecs<-11
 ff <- sparseDecom(rmat[!is.na(hrf), ], mask, 1.25/nvecs, nvecs,
-    its = 5, cthresh = 5, smooth = 1, z = -0.9)
+    its = 5, cthresh = 5, smooth = 1, z = -0.9 , statdir ="/tmp/" )
 for ( i in 1:nvecs ) {
   print(paste("Test",i))
   mdl<-lm( ff$projections[,i]  ~  cblock + myvars$globalsignal[  !is.na(hrf)] +  motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data =  data.frame( nuis[!is.na(hrf),]  ) )
@@ -618,7 +617,8 @@ cblock <- as.numeric(hrf[5:length(hrf)])
 cblock2 <- as.numeric( cblock > 0 )
 mypreds<-as.matrix( cbind( cblock, cblock2 ) )
 sccan<-sparseDecom2( inmatrix=list( rmat[5:length(hrf),] , mypreds ), inmask = c( mask , NA ) ,
-   sparseness=c( 0.1, 0.5 ), nvecs=1, its=3, smooth=1, perms=5, cthresh = c(11, 0)) 
+   sparseness=c( 0.1, 0.5 ), nvecs=1, its=3, smooth=1, perms=5,
+   cthresh = c(11, 0), statdir ="/tmp/" )
 antsImageWrite( sccan$eig1[[1]] , 'sccan_lang.nii.gz' )
 #
 # eigenanatomy 
