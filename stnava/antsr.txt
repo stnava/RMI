@@ -1321,9 +1321,10 @@ pre<-paste('fmri_motor_',ct,sep='')
 
 <<boldmotor2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
   fmri<-antsImageRead( fn[2] , 4 )
+  ImageMath(4,fmri,'SliceTimingCorrection',fmri,'bspline')
   hrf <- hemodynamicRF( scans=dim(fmri)[4] , onsets=blockfing , durations=rep(  12,  length( blockfing ) ) ,  rt=2.5 )
-  hrf[1:4]<-NA # first few frames are junk 
-  myvars<-getfMRInuisanceVariables( fmri, moreaccurate = FALSE ,  maskThresh=100 )
+  hrf[1:4]<-0 # first few frames are junk 
+  myvars<-getfMRInuisanceVariables( fmri, moreaccurate = TRUE ,  maskThresh=100 )
 @
 \end{frame}
 
@@ -1338,8 +1339,7 @@ processing: Nuisance, mean, mask, matrix.  $+$ the HRF.
   nuis<-( myvars$nuisancevariables )
   print( colnames( nuis ) )
   antsImageWrite(avg,paste(pre,"avg.nii.gz",sep=""))
-  plotANTsImage(myantsimage = avg, functional = list(mask), slices =
-  "12x20x3",    axis = 3, threshold = "0.5x1.5")
+  plotANTsImage(myantsimage = avg, functional = list(mask), slices = "12x20x3",    axis = 3, threshold = "0.5x1.5")
 @
 \end{frame}  
 
@@ -1356,34 +1356,61 @@ Use multiple regression to relate a task-design (convolved with HRF) to BOLD act
 <<boldmotor4,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
 # see http://mumford.fmripower.org/lev1.pdf
   mat  <- myvars$matrixTimeSeries
-  SmoothImage(4,fmri,1,fmri)
-  mat <- timeseries2matrix( fmri, mask )
+# mat <- timeseries2matrix( fmri, mask )
 # should also filter the hrf ?  should normalize each column to constant?
-#  mat  <- filterfMRIforNetworkAnalysis( cbind(mat) , 2.5, cbfnetwork = "BOLD" , freqLo=0.01 , freqHi = 0.5  )$filteredTimeSeries
-  globsig <- apply( mat, FUN=mean, MARGIN=1 ) 
-  arcoefs<-ar( globsig, FALSE, 2 )$ar  # similar to SPM's  autoregression estimate
-  # now use arcoefs to estimate inv cov mat 
-  autocov<-rep(NA,length(globsig) )
-  for ( i in 1:length(globsig) ) autocov[i]<-0.2^(i-1)
-  autocovmat<-matrix( rep(NA,length(globsig)*length(globsig)) ,  ncol=length(globsig) )
-  for ( i in 1:length(globsig) ) autocovmat[i,i:length(globsig)]<-shift( autocov, i-1)[i:length(globsig)] 
-  tautocovmat<-t( autocovmat )
-  autocovmat[ is.na( autocovmat ) ] <- tautocovmat[ is.na( autocovmat ) ] 
-  autocovmat<-autocovmat*arcoefs[1]+diag(length(globsig))*arcoefs[2]  # again spm style
-  autocovmat<-ginv( autocovmat ) # depends on MASS generalized inverse 
+  mat  <- filterfMRIforNetworkAnalysis( cbind(mat) , 2.5, cbfnetwork = "BOLD" , freqLo=0.001 , freqHi = 0.5  )$filteredTimeSeries
   betas<-rep(NA, ncol( mat ) )
-  desmat<-cbind( hrf, globsig, nuis[,2:7] )
-  mat <- autocovmat %*% mat
-  desmat <- autocovmat %*% desmat 
+  desmat<-cbind( globsig, nuis[,2:7] )
+# get rid of design signal in nuisance variables
+#  desmat<-residuals( lm( desmat ~ hrf ) ) 
+  desmat<-cbind( hrf, desmat )
   colnames( desmat )<-c("hrf","globsig",colnames(nuis)[2:7])
+  progress <- txtProgressBar(min = 0, max = ncol(mat),      style = 3)
+  residmat<-mat
   for ( i in 1:ncol(mat) ) {
     vox<-mat[ , i ]
     mdl<-lm( vox ~  hrf + globsig + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( desmat )  ) 
+    residmat[,i]<-residuals( mdl )
     betas[i]<-coefficients(summary(mdl))[2,3] # probably better way
+    setTxtProgressBar(progress, i)
     }
+  close(progress)
+
+#######################################
+# based on SPM AR estimation method and also      #
+# Statistical methods of estimation and inference    #
+# for functional MR image analysis Bullmore 1996  #
+####################################### 
+  globsig <- apply( rmat, FUN=mean, MARGIN=1 ) 
+  arcoefs<-ar( globsig, FALSE, 2 )$ar  
+  mat1 <- ashift(mat,c(1,0))
+  mat1[1,] <- mat[1, ]
+  mat2 <- ashift(mat,c(2,0))
+  mat2[1,] <- mat[1, ]
+  mat2[2,] <- mat[2, ]
+  amat <- mat - mat1 * arcoefs[1] - mat2 *  arcoefs[2] 
+  mat1 <- ashift(desmat,c(1,0))
+  mat1[1,] <- desmat[1, ]
+  mat2 <- ashift(desmat,c(2,0))
+  mat2[1,] <- desmat[1, ]
+  mat2[2,] <- desmat[2, ]
+  adesmat <- desmat - mat1 * arcoefs[1] - mat2 *  arcoefs[2] 
+  #
+  # new regression 
+  progress <- txtProgressBar(min = 0, max = ncol(mat),      style = 3)
+  for ( i in 1:ncol(mat) ) {
+    vox<-amat[ , i ]
+#    mdl<-lmrob( vox ~  hrf + globsig + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( desmat )  )
+    mdl<-lm( vox ~  hrf + globsig + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( desmat )  ) 
+    betas[i]<-coefficients(summary(mdl))[2,3] # probably better way
+    setTxtProgressBar(progress, i)
+    }
+  close(progress)
+
+  betathresh<-( mean( betas[betas>0.1] )+ 2.0 * sd(  betas[betas>0.1] ) )
   betaimg<-antsImageClone( mask ) # put beta vals in image space
   betaimg[ mask > 0.5 ] <- betas 
-  print( paste( max( abs( betas ) ) ,  max( ( betas ) )  ) )  # around 10 or so 
+  print( paste( max( betas )  , betathresh  ) )  # around 10 or so 
   antsImageWrite(betaimg, paste(pre,"betas.nii.gz",sep="") )
   # much much faster but i haven't figured out how to get results out easily
  #  fastResults<-lm( mat[,1:2] ~  hrf +  myvars$globalsignal  + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( nuis )  ) 
@@ -1423,12 +1450,11 @@ Is that the "right" location?
 We can look at the code for this if it is of interest ... 
 <<boldmotor7,echo=FALSE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'>>=
   # quick multivariate version 
-  rmat<-residuals( lm( mat ~  myvars$globalsignal + motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data = data.frame( nuis )  ) )
+  rmat<-residuals( lm( amat ~ motion1 + motion2 + motion3 + compcorr1  + compcorr2 + compcorr3, data = desmat  ) )
   cblock <- as.numeric(hrf[5:length(hrf)]) 
   cblock2 <- as.numeric( cblock > 0 )
   mypreds<-as.matrix( cbind( cblock, cblock2 ) )
-  sccan<-sparseDecom2( inmatrix=list( rmat[5:length(hrf),] , mypreds ), inmask = c( mask , NA ) ,
-  sparseness=c( 0.03, 1 ), nvecs=1, its=3, smooth=0, perms=10, cthresh = c(20, 0) ) 
+  sccan<-sparseDecom2( inmatrix=list( rmat[5:length(hrf),] , mypreds ), inmask = c( mask , NA ) ,  sparseness=c( 0.01, 1 ), nvecs=1, its=5, smooth=1, perms=10, cthresh = c(20, 0) ) 
   antsImageWrite( sccan$eig1[[1]] ,  paste(pre,"sccan.nii.gz",sep="" )  )
   eigimg <- sccan$eig1[[1]]
   ImageMath(3,eigimg,"Normalize",eigimg)
