@@ -42,6 +42,7 @@ if [[ $myos == "Darwin" ]]  && [[ $INSTALLR -ge 1 ]] ; then
     echo "R_LD_LIBRARY_PATH should not be set.  This may cause R installation problems."
   fi
   if [[ $INSTALLR -gt 1 ]] ; then 
+    brew tap homebrew/science
     brew install R
   fi
   if [[ -s ~/.profile ]] ; then 
