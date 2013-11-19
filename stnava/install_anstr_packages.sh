@@ -23,9 +23,30 @@ fi
 echo will install R? $INSTALLR
 echo will install R_PKG? $INSTALLRPKG
 if [[ $myos == "Linux" ]] && [[ $INSTALLR -gt 0 ]] ; then
-  sudo apt-get install build-essential git subversion cmake-curses-gui xorg libx11-dev freeglut3 freeglut3-dev
-  if [[ $INSTALLR -gt 1 ]] ; then 
-    sudo apt-get  r-base r-base-dev 
+  #Which update manager to use?
+  command -v yum > /dev/null 2>/dev/null
+  useapt=$?
+  if [ $useapt -eq 1 ]; then
+    #use apt-get
+    sudo apt-get install build-essential git subversion cmake-curses-gui xorg libx11-dev freeglut3 freeglut3-dev
+    if [[ $INSTALLR -gt 1 ]] ; then 
+      sudo apt-get r-base r-base-dev 
+    fi
+  else
+    #Use yum, e.g. for RHEL/CentOS/Fedora. Requires different package names
+    echo "yum manager found. See the script for commands to run manually, as they have not yet been "
+    echo "tested on a clean install, and they assume RHEL/CentOS 6."
+    exit 1;
+    #Experimental...
+    sudo yum groupinstall "Development Tools"
+    sudo yum groupinstall "X Window System"
+    sudo yum install git-core mod_dav_svn subversion cmake cmake-gui freeglut freeglut-devel
+    if [[ $INSTALLR -gt 1 ]] ; then
+      #NOTE: this epel repo install is for RHEL/Centos 6
+      su -c 'rpm -Uvh http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm'
+      #NOTE that above for apt-get, 'install' is not called. Bug?
+      sudo yum install R
+    fi
   fi
 fi 
 #
