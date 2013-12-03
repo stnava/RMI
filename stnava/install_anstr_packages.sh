@@ -118,16 +118,16 @@ MYRLDIR=${ANTSRDIR}/ANTsR_src/ANTsR/src/ANTS/ANTS-build/lib
 RHLIB=` R RHOME`/lib
 echo R home lib is $RHLIB 
 # if [[ ${#R_LD_LIBRARY_PATH} -eq 0 ]] ; then 
-  mybashstring=`echo export R_LD_LIBRARY_PATH=${MYRLDIR}:${RHLIB}:${R_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH} `
-  if [[ -s ~/.profile ]] ; then 
-    echo $mybashstring >> ~/.profile
-    source ~/.profile
-  else 
-    echo ${mybashstring} >> ~/.bash_profile
-    source ~/.bash_profile
-  fi 
+#  mybashstring=`echo export R_LD_LIBRARY_PATH=${MYRLDIR}:${RHLIB}:${R_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH} `
+#  if [[ -s ~/.profile ]] ; then 
+#    echo $mybashstring >> ~/.profile
+#    source ~/.profile
+#  else 
+#    echo ${mybashstring} >> ~/.bash_profile
+#    source ~/.bash_profile
+#  fi 
 # else 
-  echo "WARNING:  added $mybashstring to your environment R_LD_LIBRARY_PATH"
+#  echo "WARNING:  added $mybashstring to your environment R_LD_LIBRARY_PATH"
 # fi
 echo  check ${ANTSRDIR}/ANTsR_src/ANTsR
 if [[ ! -s ${ANTSRDIR}/ANTsR_src/ANTsR ]] ; then 
@@ -138,9 +138,9 @@ if [[ ! -s ${ANTSRDIR}/ANTsR_src/ANTsR ]] ; then
 fi 
 cd  ${ANTSRDIR}/ANTsR_src
 echo call R CMD INSTALL now ... 
-R CMD INSTALL -l $RLDIR  ANTsR
 myrenvstring=`echo R_LIBS_USER=${ANTSRDIR}:${MYRLDIR}:\$\{R_LIBS_USER\} `
 echo ${myrenvstring} >> ~/.Renviron
+R CMD INSTALL -l $RLDIR  ANTsR
 
 
 
