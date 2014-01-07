@@ -30,7 +30,7 @@ if [[ $myos == "Linux" ]] && [[ $INSTALLR -gt 0 ]] ; then
     #use apt-get
     sudo apt-get install build-essential git subversion cmake-curses-gui xorg libx11-dev freeglut3 freeglut3-dev
     if [[ $INSTALLR -gt 0 ]] ; then 
-      sudo apt-get r-base r-base-dev 
+      sudo apt-get install r-base r-base-dev 
     fi
   else
     #Use yum, e.g. for RHEL/CentOS/Fedora. Requires different package names
