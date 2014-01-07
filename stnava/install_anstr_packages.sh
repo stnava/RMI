@@ -29,7 +29,7 @@ if [[ $myos == "Linux" ]] && [[ $INSTALLR -gt 0 ]] ; then
   if [ $useapt -eq 1 ]; then
     #use apt-get
     sudo apt-get install build-essential git subversion cmake-curses-gui xorg libx11-dev freeglut3 freeglut3-dev
-    if [[ $INSTALLR -gt 1 ]] ; then 
+    if [[ $INSTALLR -gt 0 ]] ; then 
       sudo apt-get r-base r-base-dev 
     fi
   else
@@ -41,7 +41,7 @@ if [[ $myos == "Linux" ]] && [[ $INSTALLR -gt 0 ]] ; then
     sudo yum groupinstall "Development Tools"
     sudo yum groupinstall "X Window System"
     sudo yum install git-core mod_dav_svn subversion cmake cmake-gui freeglut freeglut-devel
-    if [[ $INSTALLR -gt 1 ]] ; then
+    if [[ $INSTALLR -gt 0 ]] ; then
       #NOTE: this epel repo install is for RHEL/Centos 6
       su -c 'rpm -Uvh http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm'
       #NOTE that above for apt-get, 'install' is not called. Bug?
@@ -62,7 +62,7 @@ if [[ $myos == "Darwin" ]]  && [[ $INSTALLR -ge 1 ]] ; then
   if [[ ${#R_LD_LIBRARY_PATH} -gt 0 ]] ; then 
     echo "R_LD_LIBRARY_PATH should not be set.  This may cause R installation problems."
   fi
-  if [[ $INSTALLR -gt 1 ]] ; then 
+  if [[ $INSTALLR -gt 0 ]] ; then 
     brew tap homebrew/science
     brew install R
   fi
