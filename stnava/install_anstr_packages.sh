@@ -52,7 +52,7 @@ fi
 #
 if [[ $myos == "Darwin" ]]  && [[ $INSTALLR -ge 1 ]] ; then
 # get homebrew 
-  ruby -e "$(curl -fsSL https://raw.github.com/mxcl/homebrew/go)"
+  ruby -e "$(curl -fsSL https://raw.github.com/Homebrew/homebrew/go/install)"
   brew update
   brew prune
   brew install wget 
