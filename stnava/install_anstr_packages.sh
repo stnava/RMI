@@ -98,7 +98,7 @@ R --no-save <<RSCRIPT
 local({r <- getOption("repos"); 
        r["CRAN"] <- "http://cran.r-project.org"; options(repos=r)})
 install.packages("Rcpp",type="source")
-mypkg<-c("signal","timeSeries","mFilter","MASS","robust","magic","knitr","pixmap","rgl","misc3d")
+mypkg<-c("signal","timeSeries","mFilter","fastICA","MASS","robust","magic","knitr","pixmap","rgl","misc3d")
 for ( x in mypkg ) 
   {
   install.packages(x)
