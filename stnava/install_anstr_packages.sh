@@ -52,7 +52,7 @@ fi
 #
 if [[ $myos == "Darwin" ]]  && [[ $INSTALLR -ge 1 ]] ; then
 # get homebrew 
-  ruby -e "$(curl -fsSL https://raw.github.com/mxcl/homebrew/go)"
+  ruby -e "$(curl -fsSL https://raw.github.com/Homebrew/homebrew/go/install)"
   brew update
   brew prune
   brew install wget 
@@ -98,7 +98,7 @@ R --no-save <<RSCRIPT
 local({r <- getOption("repos"); 
        r["CRAN"] <- "http://cran.r-project.org"; options(repos=r)})
 install.packages("Rcpp",type="source")
-mypkg<-c("signal","timeSeries","mFilter","MASS","robust","magic","knitr","pixmap","rgl","misc3d")
+mypkg<-c("signal","timeSeries","mFilter","fastICA","MASS","robust","magic","knitr","pixmap","rgl","misc3d")
 for ( x in mypkg ) 
   {
   install.packages(x)
