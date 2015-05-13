@@ -1,26 +1,25 @@
 ---
 title: "Medical Image Analysis with *ANTsR*"
 author: "Brian B. Avants et al."
-date: FIXME
+date: "2015-05-18"
 output:
   beamer_presentation:
     colortheme: rose
     fonttheme: structurebold
     highlight: tango
     incremental: yes
-    theme: AnnArbor
+    theme: CambridgeUS
     includes:
       in_header: mystyle.tex
     toc: yes
 ---
 
-```{r setup,eval=TRUE,results='hide',warning=FALSE,echo=FALSE}
+```{r setup,eval=TRUE,results='hide',warning=FALSE,echo=FALSE,message=FALSE}
 booleval<-FALSE
 library(knitr)
 library(rmarkdown)
 options(width=50)
 opts_chunk$set(fig.path='figure/antsr-',fig.align='center',fig.show='hold',size='footnotesize')
-knit_theme$set(  knit_theme$get("seashell")  )
 getPckg <- function(pckg) install.packages(pckg, repos = "http://cran.r-project.org")
 library( ANTsR )
 library( oro.nifti )
@@ -41,7 +40,7 @@ myregion<-"CentralSulcus"
 
 ## Tutorial Goals
 * Learn about *R*
-in general (operations, dataframes, models)
+in general (operations, dataframes, models) and *ANTsR*
 * Understand basics of *R*
 image-based statistics (I/O, accessing
 values, structure, function)
@@ -180,7 +179,7 @@ latex, pretty much any common document format is doable.
 
 Use `knitr` to make a couple of plots in our code "chunk":
 
-```{r,boring-plots-data,echo=FALSE,results='hide',dev='jpeg'}
+```{r,boring-plots-data,echo=FALSE,results='hide'}
 # par(las=1,mar=c(4,4,.1,.1))  # tick labels direction
 ```
 
@@ -201,7 +200,7 @@ organizes data with dataframes, vectors, matrices and arrays (matrices with $\ge
 3 dimensions).
 
 These can contain missing variables - but you must be careful about type!
-```{r,out.width='.4\\linewidth',dev='jpeg'}
+```{r,out.width='.4\\linewidth'}
 as.numeric( as.character( c("0.5",0.1,0.6,"A") ) )
 ```
 A data frame is used for storing data tables. It is a list of vectors
@@ -214,7 +213,7 @@ of equal length.
 
 `mtcars` is a built-in *R*
 dataframe \newline \newline
-```{r,out.width='.4\\linewidth',dev='jpeg',results='show',eval=TRUE,echo=TRUE}
+```{r,out.width='.4\\linewidth',results='show',eval=TRUE,echo=TRUE}
 mtcars[c(1,13,28),1:6]
 ```
 
@@ -222,7 +221,7 @@ mtcars[c(1,13,28),1:6]
 
 We analyze the relationship between MPG and other variables.
 
-```{r,out.width='.4\\linewidth',dev='jpeg',results='hide'}
+```{r,out.width='.4\\linewidth',results='hide'}
 myform<-paste( colnames( mtcars )[2:ncol(mtcars)] , collapse='+'  )
 myform<-as.formula( paste( "mpg~", myform ) )
 mdl <- lm(  myform , data = mtcars )
@@ -234,7 +233,7 @@ mdla<-stepAIC( mdl , direction =  c("both" ) )
 
 ## *R* $\star$Very$\star$ Basics 3
 
-```{r,out.width='.4\\linewidth',dev='jpeg',eval=TRUE,results='show',echo=FALSE}
+```{r,out.width='.4\\linewidth',eval=TRUE,results='show',echo=FALSE}
 print( summary( lm(  mdla$call$formula , data = mtcars ) ) )
 ```
 Vehicle weight ,  1/4 mile time  and Transmission type are most predictive!
@@ -330,12 +329,12 @@ colina <- antsImageRead( fn )
 
 
 ## Quickly Show Images by oro.nifti
-```{r,myviz,echo=TRUE,eval=TRUE,warning=FALSE,results='hide',fig.width=4,fig.height=4,out.width='.8\\linewidth',dev='jpeg'}
+```{r,myviz,echo=TRUE,eval=TRUE,warning=FALSE,results='hide',fig.width=4,fig.height=4,out.width='.8\\linewidth'}
 orthographic( as.array( colina ), oma=rep(2,4))
 ```
 
 ## Quickly Show Images w/ANTsR
-```{r,myviza,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.9\\linewidth',dev='jpeg'}
+```{r,myviza,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.9\\linewidth'}
 plot( as.antsImage( colin ) , axis=1 )
 ```
 
@@ -343,12 +342,12 @@ plot( as.antsImage( colin ) , axis=1 )
 
 ## Convert an Image to a Vector
 Use *ANTsR* to convert an image to a vector.
-```{r,convvec,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,convvec,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 imgvec<-colina[  colina > 50  ]
 print( length( imgvec ) )
 ```
 Use  oro.nifti to convert an image to a vector.
-```{r,convvec2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,convvec2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 imgvec<-colin[  colin > 50  ]
 print( length( imgvec ) )
 ```
@@ -375,7 +374,8 @@ See the [medical imaging task view on CRAN](http://cran.r-project.org/web/views/
 
 \textcolor{blue}{Registration: Data is in Examples/Data}
 ```bash
-antsRegistration -d 2 -m  CC[r16slice.nii.gz,r64slice.nii.gz,1,4]
+antsRegistration -d 2 
+ -m CC[r16slice.nii.gz,r64slice.nii.gz,1,4]
  -t SyN[0.25,3,0]  -o TEST -i 50x40x30 -c 50
 ```
 `antsRegistration` in *ANTsR*
@@ -388,6 +388,10 @@ Atropos -d 2 -a r16slice.nii.gz -x r16mask.nii.gz
 ```
 `atropos` in *ANTsR*
 
+`antsApplyTransforms` in both
+
+## The Basic Toolset from outside *R*
+
 \textcolor{blue}{Template building}
 ```bash
  bash buildtemplateparallel.sh -d 3 -m 30x50x20
@@ -397,14 +401,13 @@ not available in *ANTsR*
 
 # Classical Statistics
 
-
 ##  Basic Linear Regression
 This is a simple regression study that associates diagnosis (dx) with
 a local Jacobian-based volume measurement.
 
 We also look at global volume.
 
-```{r,vreg1,echo=TRUE,eval=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,vreg1,echo=TRUE,eval=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 predictor<-as.factor(
   read.csv("RMI_Data/phantpredictors.csv")$dx )
 gvol<-read.csv("RMI_Data/globalvols.csv")
@@ -416,7 +419,7 @@ This is simulated data ....
 
 
 ##  Basic Linear Regression Output
-```{r,vreg2,echo=TRUE,eval=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,vreg2,echo=TRUE,eval=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 
 summary(mdl)
 
@@ -447,42 +450,42 @@ for ( x in c(1:nvox) ) {
   pval<-coeff[2,4]
   pvals[x]<-pval
 }
-qvals<-p.adjust(pvals,method="holm") # holm recommended over BH
+qvals<-p.adjust(pvals,method="BH") # holm recommended over BH
 pvali<-makeImage( mask, 1-qvals )
 ```
 Exercise: What happens when you include globalvol as a covariate?
 
 ##  Visualizing voxel-wise statistics in *R*
 
-```{r}
-plot( mask, list( pvali ), threshold=c(0.99,1) )
+```{r,echo=FALSE,out.width='.8\\linewidth'}
+plot( mask, list( pvali ), window.overlay=c(0.95,1) )
 ```
-The regression solution p-values thresholded at 0.01 FDR-corrected.
+The regression solution p-values thresholded at 0.05 FDR-corrected.
 
 **Should use `bigLMStats` - much faster.**
 
 
-##  .... multivariate statistics in {\bf R}
+##  .... multivariate statistics in *R*
 \transdissolve
 ```{r,multivar,echo=TRUE,results='hide',warning=FALSE}
 continuousDX <- 1-as.numeric(predictor)
 continuousDX2 <- gvol
 mypreds<-as.matrix( cbind( continuousDX, continuousDX2 ) )
 sccan<-sparseDecom2( inmatrix=list( as.matrix(logjac), mypreds ),
-inmask = c( mask , NA ) ,
-   sparseness=c( 0.25, -1 ), nvecs=1, its=2, smooth=1, perms=200 )
+inmask = c( mask , NA ) , mycoption=1,
+   sparseness=c( 0.25, -1 ), nvecs=1, its=10, smooth=1, perms=200 )
 sccansol <- sccan$eig1[[1]] %>% iMath("Normalize")
 ```
 Exercise: What happens when you include globalvol as a covariate?
 
 
-##  Visualizing multivariate statistics in {\bf R}
+##  Visualizing multivariate statistics in *R*
 \transdissolve
 
-```{r sccanviz,echo=FALSE,out.width='.8\\linewidth'}
-plot( mask, list( sccansol ), threshold=c(0.05,1.1) )
-```
 The sccan solution with p-value `r sccan$ccasummary$Variate000[1]`
+```{r sccanviz,echo=FALSE,out.width='.8\\linewidth',message=FALSE,warning=FALSE}
+plot( mask, sccansol, window.overlay=c(0.05,1) )
+```
 
 
 
@@ -560,7 +563,7 @@ columns of $U$.
 
 Easy solution in *R*
 (w/o penalties):
-```{r,out.width='.4\\linewidth',dev='jpeg',eval=FALSE,echo=TRUE,show='hide'}
+```{r,out.width='.4\\linewidth',eval=FALSE,echo=TRUE,show='hide'}
 mysolution=svd(X)
 # or prcomp(X) if X not centered
 ```
@@ -570,7 +573,7 @@ The $\ell_1$ penalty is useful if $p >> n$.
 
 
 ## Principal Component Analysis Example
-```{r,out.width='.8\\linewidth',dev='jpeg',eval=TRUE,show='hide',echo=FALSE}
+```{r,out.width='.8\\linewidth',eval=TRUE,show='hide',echo=FALSE}
 PCbiplot <- function(PC, x="PC1", y="PC2") {
     # PC being a prcomp object
     data <- data.frame(obsnames=row.names(PC$x), PC$x)
@@ -610,7 +613,7 @@ CCA solutions).
 ## Canonical Correlation Analysis
 Also easy in *R*
 (SVD used internally):
-```{r,out.width='.4\\linewidth',dev='jpeg',echo=TRUE,eval=TRUE,results='hide'}
+```{r,out.width='.4\\linewidth',echo=TRUE,eval=TRUE,results='hide'}
  enginedata<-mtcars[,c(2,3,4,11)]
  outputdata<-mtcars[,c(1,7)]
  mycca<-cancor( enginedata, outputdata )
@@ -656,7 +659,7 @@ sparseness.
 
 PBAC: *R* ready medical imaging data.
 
-```{r,out.width='.4\\linewidth',dev='jpeg',results='hide',eval=TRUE,echo=FALSE}
+```{r,out.width='.4\\linewidth',results='hide',eval=TRUE,echo=TRUE}
 pbacc<-list.files(path = "./RMI_Data", pattern = glob2rx("pbac*csv")  ,
 full.names = T )
 pbacTEcog<-read.csv(pbacc[1])
@@ -672,7 +675,7 @@ pbacTRimg<-as.matrix( antsImageRead(pbaci[2] ) )
 
 We have training (n=`r nrow(pbacTRimg)`)/testing (n=`r nrow(pbacTEimg)`) data images $+$ psychometrics
 and analyze the relationship between gray matter and cognition.
-```{r,out.width='.4\\linewidth',dev='jpeg',results='show',eval=TRUE,echo=TRUE}
+```{r,out.width='.4\\linewidth',results='show',eval=TRUE,echo=TRUE}
 pbacTRcog[c(1,13,28),1:6]
 # also pbac imaging data comes from this mask
 mask<-antsImageRead( list.files(path = "./RMI_Data", pattern=glob2rx("gmask_2mmb.nii.gz") , full.names=T ) , 3 )
@@ -686,16 +689,16 @@ data("aal",package="ANTsR") # description of aal
 
 
 ## *R* Multivariate - PBAC ROIs
-```{r,out.width='.4\\linewidth',dev='jpeg',eval=TRUE,results='hide',echo=TRUE}
+```{r,out.width='.4\\linewidth',eval=TRUE,results='hide',echo=TRUE}
 inmask <-  mask > 0.5
-mylabs<-sort( unique( pbacaal[ inmask  &  pbacaal > 0.5 &  pbacaal <
-91   &  pbacaal != 51 &  pbacaal != 52 &  pbacaal != 53 &  pbacaal != 54 ] ) )
-roimatrix<-matrix( rep( NA, length( mylabs ) * nrow( pbacTRimg ) ) ,
-ncol=length(mylabs ) )
-for ( i in 1:length(mylabs) ) {
-# get vector for this label
+mylabs<-sort( unique( pbacaal[ inmask  &  
+  pbacaal > 0.5 &  pbacaal < 91   &  pbacaal != 51 &  
+  pbacaal != 52 &  pbacaal != 53 &  pbacaal != 54 ] ) )
+roimatrix<-matrix( rep( NA, length( mylabs ) 
+    * nrow( pbacTRimg ) ) , ncol=length(mylabs ) )
+for ( i in 1:length(mylabs) ) { # get vector for this label
   labelVec <- as.numeric( pbacaal[ inmask ] == mylabs[ i ] )
-  roimatrix[   , i  ] <- pbacTRimg %*% ( labelVec / sum( labelVec ) )
+  roimatrix[,i]=pbacTRimg %*% ( labelVec / sum( labelVec ) )
   }
 colnames( roimatrix ) <- aal$label_name[ mylabs ]
 mydf<-data.frame( pbacTRcog, roimatrix )
@@ -721,7 +724,7 @@ stars( pbacTRcog,
 
 
 ## *R* Multivariate: Inspect Data - PBAC ROI
-```{r,out.width='.7\\linewidth',dev='pdf',eval=TRUE,results='show',echo=TRUE}
+```{r,out.width='.8\\linewidth',dev='pdf',eval=TRUE,results='show',echo=FALSE}
 pheatmap( cor( roimatrix ) , cluster_rows = F , cluster_cols =  F )
 ```
 
@@ -752,21 +755,25 @@ pheatmap( cor( pbacTRcog , roimatrix ) , cluster_rows = F , cluster_cols =  F )
 
 
 ## *R* Multivariate - PBAC ROI Study
-```{r,out.width='.4\\linewidth',dev='jpeg',eval=TRUE,results='hide',echo=TRUE}
+```{r,out.width='.4\\linewidth',eval=TRUE,results='hide',echo=TRUE}
 myform<-paste( colnames( roimatrix ), collapse='+'  )
-myform<-as.formula( paste( "delay_free_adj~", myform , "+edu") )
+myform<-as.formula( paste( "delay_free_adj~", myform , 
+                           "+edu") )
 mydf<-data.frame( pbacTRcog, roimatrix )
-row.names(mydf)<- paste( c(1:nrow(pbacTRcog)),"_",as.character( pbacTRcog$mmse ),sep='')
+row.names(mydf)<- paste( c(1:nrow(pbacTRcog)),
+              "_",as.character( pbacTRcog$mmse ),sep='')
 mdl <- lm(  myform , data = mydf )
-mdla<-stepAIC( mdl , direction =  c("forward" ) , k = 20 , steps= 20  )
+mdla<-stepAIC( mdl  , trace = 0 )
 ageregions<-gsub("_","",as.character(mdla$call$formula)[3])
 ```
+
+## *R* Multivariate - PBAC ROI Study
 Various brain regions, together, predict naming\_adj ... `r ageregions`.
 
 
 
 ## *R* Multivariate: Draw a Picture - PBAC
-```{r,out.width='.35\\linewidth',dev='pdf',eval=TRUE,results='show',echo=TRUE}
+```{r,out.width='.3\\linewidth',dev='pdf',eval=TRUE,results='show',echo=TRUE}
 visreg( mdla, xvar="Angular_L")
 visreg( mdla, xvar="Frontal_Mid_R")
 visreg( mdla, xvar="Temporal_Pole_Sup_L")
@@ -784,11 +791,15 @@ visreg( mdla, xvar="Temporal_Pole_Sup_L")
 ## *R* Multivariate: PBAC SCCAN
 Run SCCAN between raw GM data and cognition
 ```{r,out.width='.6\\linewidth',dev='pdf',echo=2,eval=TRUE,results='hide'}
-nv<-5
-mysccan<-sparseDecom2( inmatrix=list( as.matrix(pbacTRcog), pbacTRimg
-) , inmask=c( NA , mask ), smooth = 1 , statdir ="/tmp/" , robust = 1 ,
-  sparseness=c( -0.07, 0.2 ), nvecs=nv, its=3 , perms=0, cthresh=c(0,250) )
+nv<-10
+mysccan<-sparseDecom2( 
+  inmatrix=list( as.matrix(pbacTRcog), pbacTRimg), 
+  inmask=c( NA , mask ), smooth = 1 , statdir ="/tmp/", 
+  robust = 0 , sparseness=c( -0.07, 0.05 ), mycoption=1,
+  nvecs=nv, its=10 , perms=0, cthresh=c(0,250) )
 ```
+
+## *R* Multivariate: PBAC SCCAN
 ```{r,out.width='.6\\linewidth',dev='pdf',echo=FALSE,eval=TRUE,results='show'}
 for ( ind in 1:nv ) {
   mytests<-names( pbacTRcog )[ abs( mysccan$eig1[,ind] ) > 0 ]
@@ -850,15 +861,44 @@ The SCCAN model is equally predictive but much more specific.
 
 
 ## Prediction: PBAC---Cognition from Brain
-```{r,predictpbac2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='show',fig.width=4,fig.height=4,out.width='.7\\linewidth',dev='pdf'}
+```{r,predictpbac2a,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='show',fig.width=4,fig.height=4,out.width='.7\\linewidth',dev='pdf'}
+ind=2
+mytests<-names( pbacTRcog )[ abs( mysccan$eig1[,ind] ) > 0 ]
+myform<-paste( mytests , collapse="+" )
+vecimg<-antsImageRead( paste("/tmp/sccaView2vec00",ind-1,".nii.gz",sep='') )
+vec<-vecimg[ inmask ]
+traindf<-data.frame( gm= pbacTRimg %*% vec, cog = as.matrix( pbacTRcog) %*% mysccan$eig1[,ind ] )
+cogtest <- as.matrix( pbacTEcog) %*% mysccan$eig1[,ind ]
+gmtest<-c( pbacTEimg %*% vec )
 predmdl<-lm(  cogtest ~ c(gmtest) , data = pbacTEcog )
-print( paste("Test Correlation:", cor.test( cogtest, gmtest )$est  ) )
+print( paste("Test Correlation:",names(pbacTEcog)[ which( mysccan$eig1[,ind ] > 0 )],  cor.test( cogtest, gmtest )$est  ) )
+```
+
+
+
+## Prediction: PBAC---Cognition from Brain
+```{r,predictpbac2b,echo=FALSE,warning=FALSE,eval=TRUE,tidy=TRUE,results='show',fig.width=4,fig.height=4,out.width='.7\\linewidth',dev='pdf'}
+ind=2
+print( paste("Test Correlation:",names(pbacTEcog)[ which( mysccan$eig1[,ind ] > 0 )],  cor.test( cogtest, gmtest )$est  ) )
 visreg( predmdl )
+```
+
+## Localization 
+
+```{r,echo=FALSE}
+plot( mask , vecimg %>% iMath("Normalize"), window.overlay=c(0.1,1), axis=3, nslices=20 )
+```
+
+
+## Localization 
+
+```{r,echo=FALSE}
+plot( mask , vecimg %>% iMath("Normalize"), window.overlay=c(0.3,1), axis=3, nslices=20 )
 ```
 
 ## Cross-Validation of Diagnosis
 
-```{r,out.width='.4\\linewidth',dev='jpeg',eval=TRUE,results='hide',echo=TRUE}
+```{r,out.width='.4\\linewidth',eval=TRUE,results='hide',echo=TRUE}
 dx<-as.factor( pbacTRcog$mmse < 26  )
 dx<-as.factor( pbacTRcog$fluency_adj < 2.6  )
 traindata<-data.frame( dx=dx, roimatrix )
@@ -868,20 +908,17 @@ dd<-0 ; ntests<-20
 for ( i in 1:ntests ) dd<-dd+cv.glm(traindata, mdl,K=5)$delta[1]* ( 1/ ntests )
 ```
 Reasonable classification rates.
-```{r,out.width='.4\\linewidth',dev='jpeg',eval=TRUE,results='show',echo=FALSE}
+```{r,out.width='.4\\linewidth',eval=TRUE,results='show',echo=FALSE}
 print(paste("prediction % misclassification" , dd * ntests ) )
 ```
 
 
-## Prediction: BRATS Challenge
-
-\includegraphics[width=7in]{./figure/nick_brats.png}
 
 # fMRI
 
 ## fMRI Helper Functions 1
 A function for averaging a list of images voxel-wise.  Note: It's dimension-free.
-```{r,myhelpers1,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,myhelpers1,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 avgimg <- function(  mylist , mask )
 {
 avg<-antsImageClone( mylist[[1]] )
@@ -897,7 +934,7 @@ for ( i in 1:length(mylist) )
 ## fMRI Helper Functions 2
 A function for computing the voxel-wise absolute difference of an image list
 from its average.
-```{r,myhelpers2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,myhelpers2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 sdimg <- function(  mylist , mask )
 {
 avg<-avgimg( mylist , mask )
@@ -915,7 +952,7 @@ for ( i in 1:length(mylist) )
 
 ## fMRI Helper Functions 3
 A function to interleave two R numeric vectors.
-```{r,myhelpers3,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,myhelpers3,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 interleave <- function(v1,v2)
 {
 ord1 <- 2*(1:length(v1))-1
@@ -932,7 +969,7 @@ functions" --- Gigascience, 2013.
 
 Subject: 08143633
 
-```{r,boldmotor1,echo=FALSE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor1,echo=FALSE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 blockfing = c(0, 36, 72, 108,144)
 blockfoot = c(12, 48, 84, 120, 156)
 ct<-1
@@ -940,7 +977,7 @@ fn<-c('RMI_Data/fmri_motor_sub1_s1.nii.gz','RMI_Data/fmri_motor_sub1_s2.nii.gz')
 pre<-paste('fmri_motor_',ct,sep='')
 ```
 
-```{r,boldmotor2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor2,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
   fmri<-antsImageRead( fn[2] , 4 )
   hrf <- hemodynamicRF( scans=dim(fmri)[4] , onsets=blockfing , durations=rep(  12,  length( blockfing ) ) ,  rt=2.5 )
   hrf[1:4]<-0 # first few frames are junk
@@ -952,7 +989,7 @@ pre<-paste('fmri_motor_',ct,sep='')
 The previous functions compute *R*
 friendly variables for fMRI
 processing: Nuisance, mean, mask, matrix.  $+$ the HRF.
-```{r,boldmotor3,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor3,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
   avg<-myvars$avgImage
   mask<-myvars$mask
   nuis<-( myvars$nuisancevariables )
@@ -963,7 +1000,7 @@ processing: Nuisance, mean, mask, matrix.  $+$ the HRF.
 
 ## BOLD fMRI Motor Tasks 3
 Use multiple regression to relate a task-design (convolved with HRF) to BOLD activation.
-```{r,boldmotor4,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor4,echo=TRUE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 # see http://mumford.fmripower.org/lev1.pdf
   mat  <- myvars$matrixTimeSeries
 # mat <- timeseries2matrix( fmri, mask )
@@ -985,7 +1022,7 @@ Use multiple regression to relate a task-design (convolved with HRF) to BOLD act
  ```
 
 ## BOLD fMRI Motor Tasks 4
-```{r,boldmotor5,echo=FALSE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor5,echo=FALSE,warning=FALSE,eval=TRUE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
   mx<-max( betas )
   plot( avg, list(betaimg),  axis = 3, window.overlay=c(3,max(betaimg)))
  if ( ! exists("mymni") ) {
@@ -998,7 +1035,7 @@ Use multiple regression to relate a task-design (convolved with HRF) to BOLD act
     minThresh= bth, maxThresh=100)
   plot( avg, clust,  axis = 3, window.overlay=c(1,max(clust)))
 ```
-```{r,boldmotor6,echo=TRUE,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor6,echo=TRUE,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
  gcoords<-getTemplateCoordinates( list( avg , clust ) , mymni ,  convertToTal = TRUE  )
  print( gcoords$templatepoints )
  myregion<-sub("_","",gcoords$templatepoints$AAL[1])
@@ -1024,7 +1061,7 @@ Evaluate overlap of signal.
 ## BOLD fMRI Processing Inspection
 Use multivariate decomposition to help understand both the data and
 the nuisance variables.
-```{r,boldmotor8,echo=TRUE,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor8,echo=TRUE,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 nvecs<-11
 ff <- sparseDecom( mat[!is.na(hrf), ], mask, 1.25/nvecs, nvecs,
     its = 5, cthresh = 5, smooth = 1, z = -0.9  )
@@ -1037,7 +1074,7 @@ dat<-data.frame(  time = ( (1:length(hrf[  !is.na(hrf)] ))*2.5  ), signal = ff$p
 nuis= ff$projections[, 3] , hrf = hrf[  !is.na(hrf)] )
 ```
 
-```{r,boldmotor8b,echo=FALSE,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor8b,echo=FALSE,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 jpeg(file="./figure/anstrboldsig1.jpeg",width=1024,height=256,quality=90)
 ggplot( data=dat, aes(x=time, y=signal) ) + geom_line() + ylab("BOLD
 Signal") + xlab( "time (ms)" )
@@ -1057,7 +1094,7 @@ dev.off()
 ## BOLD Decomposition with Regression-Task
 Use multivariate decomposition to help understand both the data and
 the nuisance variables.
-```{r,boldmotor9,echo=1,warning=FALSE,eval=FALSE,tidy=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor9,echo=1,warning=FALSE,eval=FALSE,tidy=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
   mdl<-lm( ff$projections[,2]  ~  cblock + myvars$globalsignal[
   !is.na(hrf)] +  motion1 + motion2 + motion3 + compcorr1 + compcorr2
   + compcorr3, data =  data.frame( nuis[!is.na(hrf),]  ) )
@@ -1068,7 +1105,7 @@ the nuisance variables.
 ## BOLD Decomposition with Regression-Nuisance
 Use multivariate decomposition to help understand both the data and
 the nuisance variables.
-```{r,boldmotor10,echo=1,warning=FALSE,eval=FALSE,tidy=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor10,echo=1,warning=FALSE,eval=FALSE,tidy=TRUE,results='show',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
   mdl<-lm( ff$projections[,3]  ~  cblock + myvars$globalsignal[  !is.na(hrf)] +  motion1 + motion2 + motion3 + compcorr1 + compcorr2 + compcorr3, data =  data.frame( nuis[!is.na(hrf),]  ) )
  print( coefficients(summary(mdl) )[,4] )
  ```
@@ -1078,11 +1115,11 @@ Where in the brain is this?
 ## BOLD Decomposition with Regression-Task in the Brain
 Use multivariate decomposition to help understand both the data and
 the nuisance variables.
-```{r,boldmotor9v,echo=1,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor9v,echo=1,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
   eigimg <- ff$eigenanatomyimages[[2]]
   eigimg=iMath(eigimg,"Normalize")
 plot(myantsimage = avg, functional = list(eigimg),
-  axis = 3, threshold = c(0.01,1),
+  axis = 3, window.overlay = c(0.01,1),
   col="red",outname="figure/antsrsdecom2.jpeg")
 ```
 \begin{figure}[b]
@@ -1093,9 +1130,9 @@ plot(myantsimage = avg, functional = list(eigimg),
 ## BOLD Decomposition with Regression-Nuis in the Brain
 Use multivariate decomposition to help understand both the data and
 the nuisance variables.
-```{r,boldmotor10v,echo=1,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldmotor10v,echo=1,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 eigimg <- ff$eigenanatomyimages[[1]] %>% iMath("Normalize")
-plot( avg, list(eigimg),  axis = 3, threshold = c(0.1,1) )
+plot( avg, list(eigimg),  axis = 3, window.overlay = c(0.1,1) )
 ```
 \begin{figure}[b]
 \includegraphics[width=4.5in]{./figure/antsrsdecom3.jpeg}
@@ -1119,7 +1156,7 @@ plot( avg, list(eigimg),  axis = 3, threshold = c(0.1,1) )
 Exercise:  Check the code below and run the language task studies from
 the Gigascience article.
 
-```{r,boldlang,echo=TRUE,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth',dev='jpeg'}
+```{r,boldlang,echo=TRUE,warning=FALSE,eval=FALSE,tidy=TRUE,results='hide',fig.width=4,fig.height=4,out.width='.4\\linewidth'}
 if ( FALSE ) {
 fmri<-antsImageRead('RMI_Data/fmri_covert_verb_generation_sub1_s2.nii.gz',4)
 blocko = c(1,24, 48, 72, 96, 120, 144 )
@@ -1136,7 +1173,7 @@ mat<-myvars$matrixTimeSeries
 nuis<-( myvars$nuisancevariables )
 print( colnames( nuis ) )
 plot(  avg,  list(mask),
-  axis = 3, threshold = c(0.5,1.5))
+  axis = 3, window.overlay = c(0.5,1.5))
 betas<-rep(NA, ncol( mat ) )
 for ( i in 1:ncol(mat) )
   {
@@ -1149,7 +1186,7 @@ betaimg[ mask > 0 ] <- betas
 mx<-max( betas )
 print( mx )
 th<-c(3,mx)
-plot( avg,  list(betaimg),  axis = 3, threshold = th )
+plot( avg,  list(betaimg),  axis = 3, window.overlay = th )
 antsImageWrite(betaimg,"betas_lang.nii.gz")
 #
 # quick multivariate version
