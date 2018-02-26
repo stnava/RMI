@@ -12,7 +12,6 @@ Names/Contact Details:
 Primary organizer:  Brian B. Avants
 Assistant Professor, Department of Radiology, University of Pennsylvania
 Email: stnava@gmail.com
-Phone: (215) 870 0787
 3600 Market St., Suite 370, 
 Philadelphia, PA, 19104
 brianavants.wordpress.com
@@ -20,7 +19,6 @@ brianavants.wordpress.com
 Co-organizer:  Tom Fletcher, 
 Assistant Professor, School of Computing, University of Utah
 Email: fletcher@sci.utah.edu
-Phone: (801) 587-9641
 Warnock Engineering Building
 72 South Campus Central Dr., Room 3750
 University of Utah
